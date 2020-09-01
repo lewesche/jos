@@ -59,6 +59,38 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint32_t ebp;
+	 __asm __volatile("movl %%ebp,%0" : "=r" (ebp));
+	uint32_t* eip =(uint32_t*)(ebp+4);
+	while(*eip) {
+		cprintf("ebp %x  ", ebp);
+		cprintf("eip %x  ", *eip);
+			
+		uint32_t* arg = eip+1;
+		cprintf("args");
+		for(int j=0; j<5; j++){
+			cprintf(" %08x", *arg);
+			arg+=1;
+		}	
+		//uint32_t* arg1 = eip+1;
+		//cprintf("arg1 address %x\n", arg1);
+		//cprintf("arg1 %x\n", *arg1);
+		//uint32_t* arg2 = eip+2;
+		//cprintf("arg2 address %x\n", arg2);
+		//cprintf("arg2 %x\n", *arg2);
+		//uint32_t* arg3 = eip+3;
+		//cprintf("arg3 address %x\n", arg3);
+		//cprintf("arg3 %x\n", *arg3);
+		//uint32_t* arg4 = eip+4;
+		//cprintf("arg4 address %x\n", arg4);
+		//cprintf("arg4 %x\n", *arg4);
+		//uint32_t* arg5 = eip+5;
+		//cprintf("arg5 address %x\n", arg5);
+		//cprintf("arg5 %x\n", *arg5);
+		cprintf("\n");
+		ebp +=32;
+		eip =(uint32_t*)(ebp+4);
+	}
 	return 0;
 }
 
