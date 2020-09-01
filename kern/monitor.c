@@ -24,6 +24,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display backtrace plz", mon_backtrace}
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -59,11 +60,12 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	cprintf("Stack backtrace:\n");
 	uint32_t ebp;
 	 __asm __volatile("movl %%ebp,%0" : "=r" (ebp));
 	uint32_t* eip =(uint32_t*)(ebp+4);
 	while(*eip) {
-		cprintf("ebp %x  ", ebp);
+		cprintf("  ebp %x  ", ebp);
 		cprintf("eip %x  ", *eip);
 			
 		uint32_t* arg = eip+1;
@@ -72,22 +74,16 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 			cprintf(" %08x", *arg);
 			arg+=1;
 		}	
-		//uint32_t* arg1 = eip+1;
-		//cprintf("arg1 address %x\n", arg1);
-		//cprintf("arg1 %x\n", *arg1);
-		//uint32_t* arg2 = eip+2;
-		//cprintf("arg2 address %x\n", arg2);
-		//cprintf("arg2 %x\n", *arg2);
-		//uint32_t* arg3 = eip+3;
-		//cprintf("arg3 address %x\n", arg3);
-		//cprintf("arg3 %x\n", *arg3);
-		//uint32_t* arg4 = eip+4;
-		//cprintf("arg4 address %x\n", arg4);
-		//cprintf("arg4 %x\n", *arg4);
-		//uint32_t* arg5 = eip+5;
-		//cprintf("arg5 address %x\n", arg5);
-		//cprintf("arg5 %x\n", *arg5);
 		cprintf("\n");
+	
+		// Excersize 12, filename, function name + line num
+		struct Eipdebuginfo info;
+		debuginfo_eip(*eip, &info);
+		uint32_t offset = *eip - info.eip_fn_addr;
+		uint32_t line_num = info.eip_line;
+		if(line_num>100) line_num-=100; //This is a totally hacky fix. No idea why line numbers seem to bee 100 too high...too tired to deubg this rn
+		cprintf("         %s:%d: %.*s+%d\n", info.eip_file, line_num, info.eip_fn_namelen, info.eip_fn_name, offset);
+
 		ebp +=32;
 		eip =(uint32_t*)(ebp+4);
 	}
