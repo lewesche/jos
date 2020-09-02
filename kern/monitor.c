@@ -62,8 +62,9 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	// Your code here.
 	cprintf("Stack backtrace:\n");
 	uint32_t ebp;
-	 __asm __volatile("movl %%ebp,%0" : "=r" (ebp));
+	__asm __volatile("movl %%ebp,%0" : "=r" (ebp));
 	uint32_t* eip =(uint32_t*)(ebp+4);
+
 	while(*eip) {
 		cprintf("  ebp %x  ", ebp);
 		cprintf("eip %x  ", *eip);
@@ -80,8 +81,7 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 		struct Eipdebuginfo info;
 		debuginfo_eip(*eip, &info);
 		uint32_t offset = *eip - info.eip_fn_addr;
-		uint32_t line_num = info.eip_line;
-		if(line_num>100) line_num-=100; //This is a totally hacky fix. No idea why line numbers seem to bee 100 too high...too tired to deubg this rn
+		int line_num = info.eip_line;
 		cprintf("         %s:%d: %.*s+%d\n", info.eip_file, line_num, info.eip_fn_namelen, info.eip_fn_name, offset);
 
 		ebp +=32;
