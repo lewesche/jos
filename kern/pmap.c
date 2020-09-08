@@ -98,8 +98,17 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-
-	return NULL;
+	
+	physaddr_t pa = PADDR(nextfree); // This will start on a page, because nextfree always starts on a page
+	if(n!=0) {
+		physaddr_t end_pa = pa + n;
+		nextfree = KADDR(end_pa);
+		uint32_t offset = (uint32_t) nextfree % PGSIZE;
+		if(offset != 0) {	// Need to adjust so that nextfree starts on a page!	
+			nextfree += PGSIZE - offset;
+		}
+	}
+	return KADDR(pa);
 }
 
 // Set up a two-level page table:
