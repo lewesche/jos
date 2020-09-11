@@ -290,7 +290,8 @@ page_init(void)
 			page_free_list = &pages[i];
 		} else {
 			//cprintf("--- page %d NOT free\n", i);
-			pages[i].pp_ref = 1; // unsure about this
+			// pages[i].pp_ref = 1; // unsure about this
+			pages[i].pp_ref = 0; // Aboves UTOP, so decided to not count references here. also idk how many things are referencing these pages in the kernel. 
 			pages[i].pp_link = NULL;
 		}
 	}
@@ -357,6 +358,15 @@ page_decref(struct PageInfo* pp)
 		page_free(pp);
 }
 
+void set_pte_paddr(pte_t* pte, physaddr_t pa) {
+	// read old pa
+	physaddr_t old_pa = PTE_ADDR(*pte); // physical address stored in the top 20 bytes
+	// exclusive or to clear old pa
+	*pte ^= (old_pa);
+	// add new address
+	*pte += (pa);
+}
+
 // Given 'pgdir', a pointer to a page directory, pgdir_walk returns
 // a pointer to the page table entry (PTE) for linear address 'va'.
 // This requires walking the two-level page table structure.
@@ -383,7 +393,42 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-	return NULL;
+	
+	cprintf("--- VA: %x\n", va);
+
+	uint32_t pgdir_idx =PDX(va);
+	cprintf("    --- pgdir_idx: %x\n", pgdir_idx);
+
+	pde_t pde = pgdir[pgdir_idx];			// Top 20 bits of this is the physical address of the page tabe
+	cprintf("    --- pde: %x\n", pde);
+	
+	physaddr_t pt_paddr = PTE_ADDR(pde);		// Top 20 bits
+
+	if(!(pde & PTE_P)) { // No page table - is this the right check?
+		if(!create) {
+			return NULL;
+		} else {
+			struct PageInfo* new_page = page_alloc(ALLOC_ZERO);	// page_alloc returns a pointer to a page info struct
+			if(new_page == NULL) {
+				return NULL;
+			} else {
+				new_page->pp_ref++;
+				pt_paddr = page2pa(new_page);
+				//set_pte_paddr(&pde, pt_paddr);	// fill in top 20 bits with physical address of page...
+				//pde |= PTE_P;					// mark it present...
+				//pde |= PTE_W;					// make it writable...
+				//pde |= PTE_U;					// to the user
+				pde = pt_paddr | PTE_P | PTE_W | PTE_U; // Does the paddr need to be bitshifted 12 over? Unsure
+				pgdir[pgdir_idx] = pde;	
+			}
+		}
+	}
+
+	uintptr_t pt_vaddr = (uintptr_t) KADDR(pt_paddr);	//Virtual address of page table
+
+	uint32_t pt_idx = PTX(va);
+	cprintf("    --- pt_idx: %x", pt_idx);
+	return & (((pte_t*) pt_vaddr)[pt_idx]);	// returns a virtual address of the page table entry
 }
 
 //
@@ -401,6 +446,19 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	
+	for(va; va<va+size; va+=PGSIZE) {
+		// Get the page table for the page
+		pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
+
+		if(*pte & PTE_P) {
+			panic("Trying to map a present page?");
+		}
+
+		struct PageInfo* new_page = page_alloc(ALLOC_ZERO);
+		physaddr_t new_page_paddr = page2pa(new_page);
+		*pte = new_page_paddr | perm | PTE_P; // Again, not sure if paddr needs to be shifted 12
+	}
 }
 
 //
@@ -432,6 +490,24 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	
+	pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
+	if(pte == NULL) {
+		return -E_NO_MEM; //alloc failed in walk
+	}
+	if(*pte & PTE_P) {
+		page_remove(pgdir, va); 	//If trying to insert the same page, might find it and free it?
+		tlb_invalidate(pgdir, va);
+	}
+	
+	if(pp == NULL) {
+		return -E_NO_MEM;
+	}
+	physaddr_t pp_paddr = page2pa(pp);
+	*pte = pp_paddr | perm | PTE_P; // Again, not sure if paddr needs to be shifted 12
+	pp->pp_ref++;
+
+
 	return 0;
 }
 
@@ -450,7 +526,17 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-	return NULL;
+	
+	pte_t* pte = pgdir_walk(pgdir, (void*)va, 0);
+	if(pte == NULL || !(*pte & PTE_P)) { // If the page table was not found OR the present bit is false
+		return NULL;
+	}
+	if(pte_store) {
+		*pte_store = pte;
+	}
+	physaddr_t pp_paddr = PTE_ADDR(*pte);
+	struct PageInfo* pp = pa2page(pp_paddr);
+	return pp;
 }
 
 //
@@ -472,6 +558,14 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	pte_t* pte;
+	struct PageInfo* pp = page_lookup(pgdir, va, &pte);
+	if(pp == NULL){
+		return;
+	}
+	page_decref(pp);
+	*pte=0;
+	tlb_invalidate(pgdir, va);
 }
 
 //
