@@ -385,17 +385,17 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
 	
-	cprintf("--- VA: %x\n", va);
-	cprintf("--- create: %d\n", create);
+	//cprintf("--- VA: %x\n", va);
+	//cprintf("--- create: %d\n", create);
 
 	uint32_t pgdir_idx =PDX(va);
-	cprintf("    --- pgdir_idx: %x\n", pgdir_idx);
+	//cprintf("    --- pgdir_idx: %x\n", pgdir_idx);
 
 	pde_t pde = pgdir[pgdir_idx];			// Top 20 bits of this is the physical address of the page tabe
-	cprintf("    --- pde: %x\n", pde);
+	//cprintf("    --- pde: %x\n", pde);
 	
 	physaddr_t pt_paddr = PTE_ADDR(pde);		// Top 20 bits
-	cprintf("    --- pt_paddr (PTE_ADDR): %x\n", pt_paddr);
+	//cprintf("    --- pt_paddr (PTE_ADDR): %x\n", pt_paddr);
 
 	if(!(pde & PTE_P)) { // No page table - is this the right check?
 		if(!create) {
@@ -407,12 +407,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			} else {
 				new_page->pp_ref++;
 				pt_paddr = page2pa(new_page);
-				cprintf("        --- new pt_paddr (page2pa): %x\n", pt_paddr);
+				//cprintf("        --- new pt_paddr (page2pa): %x\n", pt_paddr);
 				pde = pt_paddr | PTE_P | PTE_W | PTE_U; // Does the paddr need to be bitshifted 12 over? Unsure - NO
-				cprintf("        --- new pde: %x\n", pde);
+				//cprintf("        --- new pde: %x\n", pde);
 				pgdir[pgdir_idx] = pde;	
-				cprintf("        --- address should match: %x\n", PTE_ADDR(pgdir[pgdir_idx]));
-				cprintf("        --- address should match: %x\n", PTE_ADDR(pde));
 			}
 		}
 	}
@@ -420,7 +418,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	uintptr_t pt_vaddr = (uintptr_t) KADDR(pt_paddr);	//Virtual address of page table
 
 	uint32_t pt_idx = PTX(va);
-	cprintf("    --- pt_idx: %x\n", pt_idx);
+	//cprintf("    --- pt_idx: %x\n", pt_idx);
 	return & (((pte_t*) pt_vaddr)[pt_idx]);	// returns a virtual address of the page table entry
 }
 
@@ -490,26 +488,34 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	// Fill this function in
 	
 	pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
-	cprintf("    --- pte: %x\n", *pte);
+	//cprintf("    --- pte: %x\n", *pte);
 
 	if(pte == NULL) {
 		return -E_NO_MEM; //alloc failed in walk
 	}
-	if(*pte & PTE_P) {
-		page_remove(pgdir, va); 	//If trying to insert the same page, this might find it and free it?
-		tlb_invalidate(pgdir, va);
+
+	bool found_self = false;
+	if(*pte & PTE_P) { // Found a page present
+		// Check if this is the same page via physical address. If so don't remove it or flush
+		if(!(PTE_ADDR(*pte) == page2pa(pp))) {
+			page_remove(pgdir, va); 
+			tlb_invalidate(pgdir, va);
+		} else {
+			found_self=true;
+		}
 	}
 	
 	if(pp == NULL) {
 		return -E_NO_MEM;
 	}
 	physaddr_t pp_paddr = page2pa(pp);
-	cprintf("    --- pp_paddr (page2pa): %x\n", pp_paddr);
+	//cprintf("    --- pp_paddr (page2pa): %x\n", pp_paddr);
 
 	*pte = pp_paddr | perm | PTE_P;
-	cprintf("    --- pte: %x\n", *pte);
-
-	pp->pp_ref++;
+	//cprintf("    --- pte: %x\n", *pte);
+	
+	if(!found_self)
+		pp->pp_ref++;
 
 	return 0;
 }
@@ -540,7 +546,7 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 		*pte_store = pte;
 	}
 	physaddr_t pp_paddr = PTE_ADDR(*pte);
-	cprintf("    --- pp_paddr (PTE_ADDR): %x\n", pp_paddr);
+	//cprintf("    --- pp_paddr (PTE_ADDR): %x\n", pp_paddr);
 	struct PageInfo* pp = pa2page(pp_paddr);
 	return pp;
 }
@@ -836,10 +842,6 @@ check_page(void)
 	// free pp0 and try again: pp0 should be used for page table
 	page_free(pp0);
 	assert(page_insert(kern_pgdir, pp1, 0x0, PTE_W) == 0);
-				cprintf("--- address should match: %x\n", PTE_ADDR(kern_pgdir[0]));
-				cprintf("--- pages: %x\n", pages);
-				cprintf("--- pp0: %x\n", pp0);
-				cprintf("--- address should match: %x\n", page2pa(pp0));
 	assert(PTE_ADDR(kern_pgdir[0]) == page2pa(pp0));
 	assert(check_va2pa(kern_pgdir, 0x0) == page2pa(pp1));
 	assert(pp1->pp_ref == 1);
