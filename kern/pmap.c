@@ -358,15 +358,6 @@ page_decref(struct PageInfo* pp)
 		page_free(pp);
 }
 
-void set_pte_paddr(pte_t* pte, physaddr_t pa) {
-	// read old pa
-	physaddr_t old_pa = PTE_ADDR(*pte); // physical address stored in the top 20 bytes
-	// exclusive or to clear old pa
-	*pte ^= (old_pa);
-	// add new address
-	*pte += (pa);
-}
-
 // Given 'pgdir', a pointer to a page directory, pgdir_walk returns
 // a pointer to the page table entry (PTE) for linear address 'va'.
 // This requires walking the two-level page table structure.
@@ -395,6 +386,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	// Fill this function in
 	
 	cprintf("--- VA: %x\n", va);
+	cprintf("--- create: %d\n", create);
 
 	uint32_t pgdir_idx =PDX(va);
 	cprintf("    --- pgdir_idx: %x\n", pgdir_idx);
@@ -403,6 +395,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	cprintf("    --- pde: %x\n", pde);
 	
 	physaddr_t pt_paddr = PTE_ADDR(pde);		// Top 20 bits
+	cprintf("    --- pt_paddr (PTE_ADDR): %x\n", pt_paddr);
 
 	if(!(pde & PTE_P)) { // No page table - is this the right check?
 		if(!create) {
@@ -414,12 +407,12 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			} else {
 				new_page->pp_ref++;
 				pt_paddr = page2pa(new_page);
-				//set_pte_paddr(&pde, pt_paddr);	// fill in top 20 bits with physical address of page...
-				//pde |= PTE_P;					// mark it present...
-				//pde |= PTE_W;					// make it writable...
-				//pde |= PTE_U;					// to the user
-				pde = pt_paddr | PTE_P | PTE_W | PTE_U; // Does the paddr need to be bitshifted 12 over? Unsure
+				cprintf("        --- new pt_paddr (page2pa): %x\n", pt_paddr);
+				pde = pt_paddr | PTE_P | PTE_W | PTE_U; // Does the paddr need to be bitshifted 12 over? Unsure - NO
+				cprintf("        --- new pde: %x\n", pde);
 				pgdir[pgdir_idx] = pde;	
+				cprintf("        --- address should match: %x\n", PTE_ADDR(pgdir[pgdir_idx]));
+				cprintf("        --- address should match: %x\n", PTE_ADDR(pde));
 			}
 		}
 	}
@@ -427,7 +420,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	uintptr_t pt_vaddr = (uintptr_t) KADDR(pt_paddr);	//Virtual address of page table
 
 	uint32_t pt_idx = PTX(va);
-	cprintf("    --- pt_idx: %x", pt_idx);
+	cprintf("    --- pt_idx: %x\n", pt_idx);
 	return & (((pte_t*) pt_vaddr)[pt_idx]);	// returns a virtual address of the page table entry
 }
 
@@ -446,8 +439,10 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-	
+	//cprintf("--- VA: %x\n", va);
+
 	for(va; va<va+size; va+=PGSIZE) {
+		//cprintf("--- VA: %x\n", va);
 		// Get the page table for the page
 		pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
 
@@ -456,8 +451,11 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 		}
 
 		struct PageInfo* new_page = page_alloc(ALLOC_ZERO);
+		if(new_page==NULL) {
+			panic("page_alloc failed in boot_map_region");
+		}
 		physaddr_t new_page_paddr = page2pa(new_page);
-		*pte = new_page_paddr | perm | PTE_P; // Again, not sure if paddr needs to be shifted 12
+		*pte = new_page_paddr | perm | PTE_P; 
 	}
 }
 
@@ -492,11 +490,13 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	// Fill this function in
 	
 	pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
+	cprintf("    --- pte: %x\n", *pte);
+
 	if(pte == NULL) {
 		return -E_NO_MEM; //alloc failed in walk
 	}
 	if(*pte & PTE_P) {
-		page_remove(pgdir, va); 	//If trying to insert the same page, might find it and free it?
+		page_remove(pgdir, va); 	//If trying to insert the same page, this might find it and free it?
 		tlb_invalidate(pgdir, va);
 	}
 	
@@ -504,9 +504,12 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 		return -E_NO_MEM;
 	}
 	physaddr_t pp_paddr = page2pa(pp);
-	*pte = pp_paddr | perm | PTE_P; // Again, not sure if paddr needs to be shifted 12
-	pp->pp_ref++;
+	cprintf("    --- pp_paddr (page2pa): %x\n", pp_paddr);
 
+	*pte = pp_paddr | perm | PTE_P;
+	cprintf("    --- pte: %x\n", *pte);
+
+	pp->pp_ref++;
 
 	return 0;
 }
@@ -528,6 +531,8 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 	// Fill this function in
 	
 	pte_t* pte = pgdir_walk(pgdir, (void*)va, 0);
+	cprintf("    --- pte: %x\n", *pte);
+
 	if(pte == NULL || !(*pte & PTE_P)) { // If the page table was not found OR the present bit is false
 		return NULL;
 	}
@@ -535,6 +540,7 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 		*pte_store = pte;
 	}
 	physaddr_t pp_paddr = PTE_ADDR(*pte);
+	cprintf("    --- pp_paddr (PTE_ADDR): %x\n", pp_paddr);
 	struct PageInfo* pp = pa2page(pp_paddr);
 	return pp;
 }
@@ -830,6 +836,10 @@ check_page(void)
 	// free pp0 and try again: pp0 should be used for page table
 	page_free(pp0);
 	assert(page_insert(kern_pgdir, pp1, 0x0, PTE_W) == 0);
+				cprintf("--- address should match: %x\n", PTE_ADDR(kern_pgdir[0]));
+				cprintf("--- pages: %x\n", pages);
+				cprintf("--- pp0: %x\n", pp0);
+				cprintf("--- address should match: %x\n", page2pa(pp0));
 	assert(PTE_ADDR(kern_pgdir[0]) == page2pa(pp0));
 	assert(check_va2pa(kern_pgdir, 0x0) == page2pa(pp1));
 	assert(pp1->pp_ref == 1);
