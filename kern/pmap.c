@@ -206,7 +206,7 @@ mem_init(void)
 		//     Permissions: kernel RW, user NONE
 		// Your code goes here:
 		
-		boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, (physaddr_t)bootstack, 0);
+		boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), 0);
 
 		//////////////////////////////////////////////////////////////////////
 		// Map all of physical memory at KERNBASE.
