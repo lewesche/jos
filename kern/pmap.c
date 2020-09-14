@@ -101,16 +101,16 @@ boot_alloc(uint32_t n)
 	//
 	// LAB 2: Your code here.
 	
-	physaddr_t pa = PADDR(nextfree); // This will start on a page, because nextfree always starts on a page
+	result = nextfree; 
 	if(n!=0) {
-		physaddr_t end_pa = pa + n;
-		nextfree = KADDR(end_pa);
-		uint32_t offset = (uint32_t) nextfree % PGSIZE;
-		if(offset != 0) {	// Need to adjust so that nextfree starts on a page!	
-			nextfree += PGSIZE - offset;
-		}
+		nextfree += (uint32_t)ROUNDUP(n, PGSIZE);
 	}
-	return KADDR(pa);
+
+	if((uint32_t)nextfree % PGSIZE != 0) {
+		panic("NEXTFREE NOT ALIGNED");
+	}
+
+	return result;
 }
 
 // Set up a two-level page table:
@@ -139,9 +139,6 @@ mem_init(void)
 		kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
 		memset(kern_pgdir, 0, PGSIZE);
 
-		//cprintf("--- kern_pgdir VIRTUAL ADDRESS: %x\n", kern_pgdir);
-		//cprintf("--- kern_pgdir PHYSICAL ADDRESS: %x\n", PADDR(kern_pgdir));
-
 		//////////////////////////////////////////////////////////////////////
 		// Recursively insert PD in itself as a page table, to form
 		// a virtual page table at virtual address UVPT.
@@ -161,12 +158,6 @@ mem_init(void)
 
 		pages = (struct PageInfo*) boot_alloc(npages*sizeof(struct PageInfo));
 		memset(pages, 0, npages*sizeof(struct PageInfo*));
-
-		//cprintf("--- pages VIRTUAL ADDRESS: %x\n", pages);
-		//cprintf("--- pages PHYSICAL ADDRESS: %x\n", PADDR(pages));
-
-		//cprintf("--- after pages VIRTUAL ADDRESS: %x\n", boot_alloc(0));
-		//cprintf("--- after pages PHYSICAL ADDRESS: %x\n", PADDR(boot_alloc(0)));
 
 		//////////////////////////////////////////////////////////////////////
 		// Now that we've allocated the initial kernel data structures, we set
@@ -191,8 +182,8 @@ mem_init(void)
 		//    - pages itself -- kernel RW, user NONE
 		// Your code goes here:
 
-		//Get the PageInfo struct corresponding to the paddress where pages is hanging out
-		boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U);
+		// Maybe perm should also include PTE_W?
+		boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U|PTE_P);
 
 		//////////////////////////////////////////////////////////////////////
 		// Use the physical memory that 'bootstack' refers to as the kernel
@@ -206,7 +197,7 @@ mem_init(void)
 		//     Permissions: kernel RW, user NONE
 		// Your code goes here:
 		
-		boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), 0);
+		boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
 		//////////////////////////////////////////////////////////////////////
 		// Map all of physical memory at KERNBASE.
@@ -217,7 +208,7 @@ mem_init(void)
 		// Permissions: kernel RW, user NONE
 		// Your code goes here:
 
-		boot_map_region(kern_pgdir, KERNBASE, 0x100000000 - KERNBASE, 0, 0);
+		boot_map_region(kern_pgdir, KERNBASE, 0xffffffff - KERNBASE+1, 0, PTE_W);
 
 		// Check that the initial page directory has been set up correctly.
 		check_kern_pgdir();
@@ -280,27 +271,17 @@ mem_init(void)
 
 		size_t i;
 		for (i = 0; i < npages; i++) {
-			bool pageFree = true;
-
-			if(i==0) {																// pg 0 not free 
-				pageFree = false;
-			} else if( (i>=IOPHYSMEM/PGSIZE) && (i<EXTPHYSMEM/PGSIZE)) {			// io hole not free
-				pageFree = false;
-			} else if( (i>=EXTPHYSMEM/PGSIZE) && (i<PADDR(boot_alloc(0))/PGSIZE) ) { // Everthing up to next available address used by the kernel and page table structs
-				pageFree = false;
+			bool pageFree = false;
+			if(i*PGSIZE >= PADDR(boot_alloc(0))) {
+				pageFree = true;
+			} else if(i*PGSIZE >= PGSIZE && i*PGSIZE<npages_basemem*PGSIZE) {
+				pageFree = true;
 			}
-
-
 			if(pageFree) {
 				pages[i].pp_ref = 0;
 				pages[i].pp_link = page_free_list;
 				page_free_list = &pages[i];
-			} else {
-				//cprintf("--- page %d NOT free\n", i);
-				// pages[i].pp_ref = 1; // unsure about this
-				pages[i].pp_ref = 0; // Aboves UTOP, so decided to not count references here. also idk how many things are referencing these pages in the kernel. 
-				pages[i].pp_link = NULL;
-			}
+			} 
 		}
 	}
 
@@ -392,40 +373,32 @@ mem_init(void)
 	{
 		// Fill this function in
 	
-	//cprintf("--- VA: %x\n", va);
-	//cprintf("--- create: %d\n", create);
 
 	uint32_t pgdir_idx =PDX(va);
-	//cprintf("    --- pgdir_idx: %x\n", pgdir_idx);
 
-	pde_t pde = pgdir[pgdir_idx];			// Top 20 bits of this is the physical address of the page tabe
-	//cprintf("    --- pde: %x\n", pde);
+	pde_t* pde = &pgdir[pgdir_idx];	
 	
-	physaddr_t pt_paddr = PTE_ADDR(pde);		// Top 20 bits
-	//cprintf("    --- pt_paddr (PTE_ADDR): %x\n", pt_paddr);
+	physaddr_t pt_paddr = PTE_ADDR(*pde);
 
-	if(!(pde & PTE_P)) { // No page table - is this the right check?
+	if(!(*pde & PTE_P)) { 
 		if(!create) {
 			return NULL;
 		} else {
-			struct PageInfo* new_page = page_alloc(ALLOC_ZERO);	// page_alloc returns a pointer to a page info struct
+			struct PageInfo* new_page = page_alloc(ALLOC_ZERO);	
 			if(new_page == NULL) {
 				return NULL;
 			} else {
 				new_page->pp_ref++;
 				pt_paddr = page2pa(new_page);
-				//cprintf("        --- new pt_paddr (page2pa): %x\n", pt_paddr);
-				pde = pt_paddr | PTE_P | PTE_W | PTE_U; // Does the paddr need to be bitshifted 12 over? Unsure - NO
-				//cprintf("        --- new pde: %x\n", pde);
-				pgdir[pgdir_idx] = pde;	
+				*pde=0; 					
+				*pde = pt_paddr | PTE_P | PTE_W | PTE_U; 
 			}
 		}
 	}
 
-	uintptr_t pt_vaddr = (uintptr_t) KADDR(pt_paddr);	//Virtual address of page table
+	uintptr_t pt_vaddr = (uintptr_t) KADDR(pt_paddr);	
 
 	uint32_t pt_idx = PTX(va);
-	//cprintf("    --- pt_idx: %x\n", pt_idx);
 	return & (((pte_t*) pt_vaddr)[pt_idx]);	// returns a virtual address of the page table entry
 }
 
@@ -443,29 +416,29 @@ mem_init(void)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-	// Fill this function in
-	uint32_t max_pages = size/PGSIZE; // This would have to change if input not page aligned 
-		//cprintf("--- max_pages = %d\n", max_pages);
-		//cprintf("--- size = %x\n", size);
-		//cprintf("--- va = %x\n", va);
-		//cprintf("--- pa = %x\n", pa);
 	
-	for(uint32_t i=0; i<max_pages; ++i) {
-		//cprintf("--- i = %d\n", i);
-		//cprintf("--- va = %x\n", va);
-		//cprintf("--- pa = %x\n", pa);
-		// Get the page table for the page
+	if(va%PGSIZE) {
+		cprintf("---- boot_map_region : va not page aligned: %x\n", va);
+		panic("MISALIGN");
+	}
+	if(size%PGSIZE) {
+		cprintf("---- boot_map_region : size not page aligned: %x\n", size);
+		panic("BAD ALIGN");
+	}
+	if(pa%PGSIZE) {
+		cprintf("---- boot_map_region : pa not page aligned: %x\n", pa);
+		panic("UNALIGN");
+	}
+
+	// Fill this function in
+	uint32_t max_pages = size/PGSIZE;
+	
+	for(uint32_t i=0; i<max_pages; i++) {
 		pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
 		if(*pte & PTE_P) {
 			panic("Trying to map a present page?");
 		}
 
-		// Get the page of the mem we want to map
-		// struct PageInfo* pp = pa2page(pa);
-		// if(pp==NULL) {
-		//	panic("page_alloc failed in boot_map_region");
-		//}
-		//physaddr_t new_page_paddr = page2pa(new_page);
 		*pte = pa | perm | PTE_P; 
 
 		va+=PGSIZE;
@@ -504,8 +477,6 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	// Fill this function in
 	
 	pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
-	//cprintf("    --- pte: %x\n", *pte);
-
 	if(pte == NULL) {
 		return -E_NO_MEM; //alloc failed in walk
 	}
@@ -525,10 +496,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 		return -E_NO_MEM;
 	}
 	physaddr_t pp_paddr = page2pa(pp);
-	//cprintf("    --- pp_paddr (page2pa): %x\n", pp_paddr);
-
 	*pte = pp_paddr | perm | PTE_P;
-	//cprintf("    --- pte: %x\n", *pte);
 	
 	if(!found_self)
 		pp->pp_ref++;
@@ -553,7 +521,6 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 	// Fill this function in
 	
 	pte_t* pte = pgdir_walk(pgdir, (void*)va, 0);
-	cprintf("    --- pte: %x\n", *pte);
 
 	if(pte == NULL || !(*pte & PTE_P)) { // If the page table was not found OR the present bit is false
 		return NULL;
@@ -562,7 +529,6 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 		*pte_store = pte;
 	}
 	physaddr_t pp_paddr = PTE_ADDR(*pte);
-	//cprintf("    --- pp_paddr (PTE_ADDR): %x\n", pp_paddr);
 	struct PageInfo* pp = pa2page(pp_paddr);
 	return pp;
 }
