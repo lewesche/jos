@@ -21,14 +21,14 @@ Entry	Base Virtual Address	Points to Logically
 1		0x00400000
 0		0x00000000
 
-3) When the user tries to access a virtual address it is checked by hardware during address translation. If the page table entry's U/S=0, the user cant read or write the page. If U/S=1 and R/W=0 the user can read only. If U/S=1 and R/W=1 the user can do both. 
+3)	When the user tries to access a virtual address it is checked by hardware during address translation. If the page table entry's U/S=0, the user cant read or write the page. If U/S=1 and R/W=0 the user can read only. If U/S=1 and R/W=1 the user can do both. 
 
-4) (1024 page dir entries) * (1024 page table entires) * (4096 bytes per page) = 200~4294967296
+4)	(1024 page dir entries) * (1024 page table entires) * (4096 bytes per page) = 200~4294967296
 
-5) There is space overhead - the page dir and page tables need to be stored somwhere, taking up space. Also in lab 1 we learned that some of the address space is used to map devices, along with BIOS and display functionality. 
+5)	There is space overhead - the page dir and page tables need to be stored somwhere, taking up space. Also in lab 1 we learned that some of the address space is used to map devices, along with BIOS and display functionality. 
 
-6) 
-
+6)	The kernel is loaded at a low address but linked at a higher address above KERNBASE. entry.S starts running at the low physical address, where before turning on paging it loads a temporary page dir. This temporary page dir simply maps the bottom 4mb of virtual memory to the bottom 4mb of physical memory, 1 to 1. We raise EIP above KERNBASE right at the end of entry.S,  before running C code. After paging turning on but before we raise EIP, we can execute because a trivial 1:1 address translation is happening at low addresses, thanks to our temporary page table. 
+	
 
 
 
