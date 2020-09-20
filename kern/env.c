@@ -117,6 +117,17 @@ env_init(void)
 	// Set up envs array
 	// LAB 3: Your code here.
 
+	env_free_list = &envs[0];
+
+	for(size_t i=0; i<NENV-1; i++) {
+		envs[i].env_link = &envs[i+1];
+		envs[i].env_id = 0;
+		envs[i].env_type = ENV_FREE;
+	}
+	envs[NENV-1].env_link = NULL;
+	envs[NENV-1].env_id = 0;
+	envs[NENV-1].env_type = ENV_FREE;
+
 	// Per-CPU part of the initialization
 	env_init_percpu();
 }
@@ -179,6 +190,23 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
+
+	p->pp_ref++;
+	
+	pde_t* pgdir = page2kva(p);
+	//*pgdir = page2pa(p) | PTE_P | PTE_U | PTE_W;
+
+	// No acess to this function? hmm
+	//boot_map_region(pgdir, UPAGES, ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U|PTE_P);
+	//boot_map_region(pgdir, UENVS, ROUNDUP(NENV * sizeof(struct Env), PGSIZE), PADDR(envs), PTE_U|PTE_P);
+	//boot_map_region(pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+	//boot_map_region(pgdir, KERNBASE, 0xffffffff - KERNBASE+1, 0, PTE_W);
+
+	// Copy kern_pgdir instead? This shouldn't really be the same as boot_map_region, but boot_map_region calls page_alloc which I shouldn't do I guess
+	size_t size = PGSIZE/4 - PDX(UTOP);
+	memcpy(&pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], size);
+
+	e->env_pgdir = pgdir;
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -267,6 +295,19 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+
+	// order of these matters...
+	void* endva = ROUNDUP(va+len, PGSIZE);	
+	va = ROUNDDOWN(va, PGSIZE); 	// start va
+
+	for(va; va<endva; va+=PGSIZE) {
+		struct PageInfo *pp = page_alloc(0);
+		if(!pp) { 
+			panic("region_alloc failed in page_alloc"); } 
+		int status = page_insert(e->env_pgdir, pp, va, PTE_U | PTE_W);
+		if(status == -E_NO_MEM) { 
+			panic("region_alloc failed in page_alloc"); } 
+	}
 }
 
 //
