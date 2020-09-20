@@ -19,7 +19,6 @@ struct UserStabData {
 	const char *stabstr_end;
 };
 
-
 // stab_binsearch(stabs, region_left, region_right, type, addr)
 //
 //	Some stab types are arranged in increasing order by instruction
@@ -150,6 +149,7 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		// Can't search for user-level addresses yet!
 	}
 
 	// String table validity checks
@@ -205,6 +205,16 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	which one.
 	// Your code here.
 
+	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
+	if(lline <= rline){
+		//found
+		// Wow this next line was hard to figure out. Read about how line numbers are stored in STABS format here http://sourceware.org/gdb/onlinedocs/stabs.html#Line-Numbers
+		// (Link above found in /inc/stab.h
+		info->eip_line = stabs[lline].n_desc;
+	} else {
+		//not found
+		return -1;
+	}
 
 	// Search backwards from the line number for the relevant filename
 	// stab.
@@ -217,7 +227,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		lline--;
 	if (lline >= lfile && stabs[lline].n_strx < stabstr_end - stabstr)
 		info->eip_file = stabstr + stabs[lline].n_strx;
-
 
 	// Set eip_fn_narg to the number of arguments taken by the function,
 	// or 0 if there was no containing function.
