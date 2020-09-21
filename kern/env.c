@@ -306,7 +306,7 @@ region_alloc(struct Env *e, void *va, size_t len)
 			panic("region_alloc failed in page_alloc"); } 
 		int status = page_insert(e->env_pgdir, pp, va, PTE_U | PTE_W);
 		if(status == -E_NO_MEM) { 
-			panic("region_alloc failed in page_alloc"); } 
+			panic("region_alloc failed in page_insert"); } 
 	}
 }
 
@@ -365,10 +365,39 @@ load_icode(struct Env *e, uint8_t *binary)
 
 	// LAB 3: Your code here.
 
+	// Which page dir should be in force proably means switch page dir to the enviroments page dir
+	uint32_t old_cr3 = rcr3();	// Defined in inc/x86.h by lcr3, which I know load cr3 in pmap
+	lcr3(PADDR(e->env_pgdir));	// pmap used a physical address
+
+	struct Elf* elf = (struct Elf*) binary;						// Can I do this? I think the ELF file mentioned above should just be the binary
+	struct Proghdr* ph = (struct Proghdr*) (binary + elf->e_phoff);		// This is basically coppied from boot/main.c, not sure how it really works - This is a header for the first segment?
+	struct Proghdr* eph = ph + elf->e_phnum;
+	
+	// Iterate through segments like boot/main.c
+	for (; ph < eph; ph++) {
+		if(ph->p_type == ELF_PROG_LOAD) {
+			region_alloc(e, (void*)ph->p_va, ph->p_memsz); // region_alloc handles stuff being not aligned, sets user r/w
+			memcpy((void*)ph->p_va, binary + ph->p_offset, ph->p_filesz);	// 
+			memset((void*)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);	// Should clear out the whole bss section if not marked? Else if bss doesn't have a ph, what to zero? check this
+		}	
+	}
+	
+	// lol env_tf needs to be set to "sensible" values	- these names seem to match up between the Trapframe struct and the Elf struct
+	e->env_tf.tf_eip = elf->e_entry;
+	e->env_tf.tf_eflags = elf->e_flags;
+
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
+	struct PageInfo *pp = page_alloc(0);
+	if(!pp) { 
+		panic("load_icode failed in page_alloc"); } 
+	int status = page_insert(e->env_pgdir, pp, (void*)(USTACKTOP-PGSIZE), PTE_U | PTE_W);
+	if(status == -E_NO_MEM) { 
+		panic("load_icode failed in page_insert"); } 
+
+	lcr3(old_cr3);	// Should this happen before mapping the stack?
 }
 
 //
@@ -382,6 +411,22 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
+	
+	struct Env* new_env;
+	int status;
+
+	//if(curenv == NULL){
+		status =  env_alloc(&new_env, 0);
+	//} else {
+	//	status =  env_alloc(&new_env, curenv->env_id);
+	//}
+
+	if(status<0) {
+		panic("env_create failed in env_alloc() :(");
+	}
+
+	load_icode(new_env, binary);
+	new_env->env_type = type;
 }
 
 //
@@ -498,6 +543,18 @@ env_run(struct Env *e)
 
 	// LAB 3: Your code here.
 
-	panic("env_run not yet implemented");
+	//panic("env_run not yet implemented");
+	
+	if(curenv != e) {	// new enviroment is running
+		if(curenv!=NULL && curenv->env_status==ENV_RUNNABLE) {
+			curenv->env_status = ENV_RUNNABLE;
+		}
+		curenv = e;
+		curenv->env_status = ENV_RUNNING;
+		curenv->env_runs++;
+		lcr3(PADDR(curenv->env_pgdir));
+	}
+	env_pop_tf(&e->env_tf); // If something breaks here, probably bc of load_icode()
+
 }
 
