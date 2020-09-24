@@ -1,0 +1,10 @@
+Name: Leif Wesche
+ID: 7403776934
+
+Lab 3
+
+1	We need handlers to do different things - ex when a divide by zero fault occurs, we probably want to kill the program. But obviously we do not want to kill the program each time a page fault occurs, we want to bring in that page!
+
+2	13 is the protection interrupt, and 14 is the page falt interrupt. A procection fault occured because the program tried to throw a page fault interupt manually from user space - users aren't allowed to throw page faults manually, page fault's are only thrown when a address translation is not found.  
+
+ 
