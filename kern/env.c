@@ -202,8 +202,8 @@ env_setup_vm(struct Env *e)
 	//boot_map_region(pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 	//boot_map_region(pgdir, KERNBASE, 0xffffffff - KERNBASE+1, 0, PTE_W);
 
-	// Copy kern_pgdir instead? This shouldn't really be the same as boot_map_region, but boot_map_region calls page_alloc which I shouldn't do I guess
-	size_t size = PGSIZE/4 - PDX(UTOP);
+	// Copy user part of kern_pgdir instead? This is kind of like a shallow copy, which should page fault but thats OK
+	size_t size = PGSIZE - PDX(UTOP)*4;
 	memcpy(&pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], size);
 
 	e->env_pgdir = pgdir;

@@ -266,23 +266,38 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-//	int US = tf->tf_err & 4;
-//	int WR = tf->tf_err & 2;
-//	int P = tf->tf_err & 1;
+	
+	// This code just breaks prior tests read/write
 
-//	if(US) { // Fault happened in user mode
-//		if(P) { // Didnt have permission
-//				
-//		} else { // Missing page
-//			
-//		}
-//	} else { // Happened in kernel mode
-//		if(P) { // This shouldnt happen?
-//			panic("Page fault because kernel did not have permission?");
-//		} else {
-//			
-//		} // Missing page
-//	}
+	int US = tf->tf_err & 4;
+	int WR = tf->tf_err & 2;
+	int P = tf->tf_err & 1;
+	
+	cprintf("    ----page_fault_handler va = %x, err = %d\n", fault_va, tf->tf_err);
+	cprintf("    ----page_fault_handler US = %d\n", US);
+	cprintf("    ----page_fault_handler WR = %d\n", WR);
+	cprintf("    ----page_fault_handler P = %d\n", P);
+	//if(US) { // Fault happened in user mode
+	//	if(P) { // Didnt have permission
+	//		//panic("Page fault because user did not have permission?");
+	//	} else { // Missing page
+			//cprintf("        ----allocating and inserting page (user)\n");
+			//struct PageInfo *pp = page_alloc(ALLOC_ZERO);
+			//pp->pp_ref++;
+			//page_insert(curenv->env_pgdir, pp, (void*)fault_va, PTE_U | PTE_W);	
+			//return;
+	//	}
+	//} else { // Happened in kernel mode
+	//	if(P) { // This shouldnt happen?
+	//		//panic("Page fault because kernel did not have permission?");
+	//	} else {
+	//		cprintf("        ----allocating and inserting page (kern)\n");
+	//		struct PageInfo *pp = page_alloc(ALLOC_ZERO);
+	//		pp->pp_ref++;
+	//		page_insert(kern_pgdir, pp, (void*)fault_va, PTE_W | PTE_U);	
+	//		return;
+	//	} 
+	//}
 	
 
 	// We've already handled kernel-mode exceptions, so if we get here,
