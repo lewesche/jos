@@ -281,13 +281,13 @@ page_fault_handler(struct Trapframe *tf)
 	//	if(P) { // Didnt have permission
 	//		//panic("Page fault because user did not have permission?");
 	//	} else { // Missing page
-			//cprintf("        ----allocating and inserting page (user)\n");
-			//struct PageInfo *pp = page_alloc(ALLOC_ZERO);
-			//pp->pp_ref++;
-			//page_insert(curenv->env_pgdir, pp, (void*)fault_va, PTE_U | PTE_W);	
-			//return;
+	//		cprintf("        ----allocating and inserting page (user)\n");
+	//		struct PageInfo *pp = page_alloc(ALLOC_ZERO);
+	//		pp->pp_ref++;
+	//		page_insert(curenv->env_pgdir, pp, (void*)fault_va, PTE_U | PTE_W);	
+	//		return;
 	//	}
-	//} else { // Happened in kernel mode
+	//} //else { // Happened in kernel mode
 	//	if(P) { // This shouldnt happen?
 	//		//panic("Page fault because kernel did not have permission?");
 	//	} else {

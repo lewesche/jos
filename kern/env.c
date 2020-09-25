@@ -205,6 +205,8 @@ env_setup_vm(struct Env *e)
 	// Copy user part of kern_pgdir instead? This is kind of like a shallow copy, which should page fault but thats OK
 	size_t size = PGSIZE - PDX(UTOP)*4;
 	memcpy(&pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], size);
+	
+	//memcpy(pgdir, kern_pgdir, PGSIZE);
 
 	e->env_pgdir = pgdir;
 
