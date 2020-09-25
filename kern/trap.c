@@ -88,12 +88,13 @@ trap_init(void)
 	// Need handler segment, offset, and permissions
 	unsigned istrap = 1;	// istrap = 1 for trap
 	unsigned sel = GD_KT;	// segment should be the seg where the interrupt function lives - there is a macro for this, (GD_KT in memlayout.h) but this is a constant, does it change with paging? 
-	unsigned dpl = 0;		// offset might just be the function address (segment addresses are just the same as virtual addresses in jos?) - or a portion of it?
+	unsigned dpl = 0;		
+							// offset might just be the function address (segment addresses are just the same as virtual addresses in jos?) - or a portion of it?
 
 	SETGATE(idt[0], istrap, sel, trap0, dpl);
 	SETGATE(idt[1], istrap, sel, trap1, dpl);
 	SETGATE(idt[2], istrap, sel, trap2, dpl);
-	SETGATE(idt[3], istrap, sel, trap3, dpl);
+	SETGATE(idt[3], istrap, sel, trap3, 3);
 	SETGATE(idt[4], istrap, sel, trap4, dpl);
 	SETGATE(idt[5], istrap, sel, trap5, dpl);
 	SETGATE(idt[6], istrap, sel, trap6, dpl);
@@ -186,8 +187,14 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	cprintf("---- in trap_dispatch, trapno = %d\n", tf->tf_trapno);
 	if(tf->tf_trapno == T_PGFLT) {
+		cprintf("    ---- in trap_dispatch pgflt\n");
 		page_fault_handler(tf);
+		return;
+	} else if(tf->tf_trapno == T_BRKPT) {
+		cprintf("    ---- in trap_dispatch brkpt\n");
+		monitor(tf);
 		return;
 	}
 
