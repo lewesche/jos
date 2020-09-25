@@ -76,6 +76,7 @@ extern void trap16();
 extern void trap17();
 extern void trap18();
 extern void trap19();
+extern void trap48();
 
 void
 trap_init(void)
@@ -109,6 +110,7 @@ trap_init(void)
 	SETGATE(idt[17], istrap, sel, trap17, dpl);
 	SETGATE(idt[18], istrap, sel, trap18, dpl);
 	SETGATE(idt[19], istrap, sel, trap19, dpl);
+	SETGATE(idt[48], istrap, sel, trap48, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -196,7 +198,13 @@ trap_dispatch(struct Trapframe *tf)
 		cprintf("    ---- in trap_dispatch brkpt\n");
 		monitor(tf);
 		return;
+	} else if(tf->tf_trapno == T_SYSCALL) {
+		cprintf("    ---- in trap_dispatch syscall\n");
+		int32_t ret = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+		tf->tf_regs.reg_eax = ret;
+		return;
 	}
+
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);

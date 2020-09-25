@@ -58,6 +58,7 @@ TRAPHANDLER_NOEC(trap7, T_DEVICE);
 TRAPHANDLER_NOEC(trap16, T_FPERR);
 TRAPHANDLER_NOEC(trap18, T_MCHK);
 TRAPHANDLER_NOEC(trap19, T_SIMDERR);
+TRAPHANDLER_NOEC(trap48, T_SYSCALL);
 
 # https://usc-govindan-classes.github.io/cs555/jos-doc/readings/i386/s09_08.htm
 # Traps that geterate error codes:
