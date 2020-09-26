@@ -85,12 +85,9 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 	
-	// Gatedesc type and macros from inc/mmu.h
-	// Need handler segment, offset, and permissions
-	unsigned istrap = 1;	// istrap = 1 for trap
-	unsigned sel = GD_KT;	// segment should be the seg where the interrupt function lives - there is a macro for this, (GD_KT in memlayout.h) but this is a constant, does it change with paging? 
+	unsigned istrap = 1;	
+	unsigned sel = GD_KT;	
 	unsigned dpl = 0;		
-							// offset might just be the function address (segment addresses are just the same as virtual addresses in jos?) - or a portion of it?
 
 	SETGATE(idt[0], istrap, sel, trap0, dpl);
 	SETGATE(idt[1], istrap, sel, trap1, dpl);
@@ -189,17 +186,13 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
-	cprintf("---- in trap_dispatch, trapno = %d\n", tf->tf_trapno);
 	if(tf->tf_trapno == T_PGFLT) {
-		cprintf("    ---- in trap_dispatch pgflt\n");
 		page_fault_handler(tf);
 		return;
 	} else if(tf->tf_trapno == T_BRKPT) {
-		cprintf("    ---- in trap_dispatch brkpt\n");
 		monitor(tf);
 		return;
 	} else if(tf->tf_trapno == T_SYSCALL) {
-		cprintf("    ---- in trap_dispatch syscall\n");
 		int32_t ret = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
 		tf->tf_regs.reg_eax = ret;
 		return;
@@ -267,38 +260,8 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 3: Your code here.
 	
-	// This code just breaks prior tests read/write
-
-	int US = tf->tf_err & 4;
-	int WR = tf->tf_err & 2;
-	int P = tf->tf_err & 1;
-	
-	cprintf("    ----page_fault_handler va = %x, err = %d\n", fault_va, tf->tf_err);
-	cprintf("    ----page_fault_handler US = %d\n", US);
-	cprintf("    ----page_fault_handler WR = %d\n", WR);
-	cprintf("    ----page_fault_handler P = %d\n", P);
-	//if(US) { // Fault happened in user mode
-	//	if(P) { // Didnt have permission
-	//		//panic("Page fault because user did not have permission?");
-	//	} else { // Missing page
-	//		cprintf("        ----allocating and inserting page (user)\n");
-	//		struct PageInfo *pp = page_alloc(ALLOC_ZERO);
-	//		pp->pp_ref++;
-	//		page_insert(curenv->env_pgdir, pp, (void*)fault_va, PTE_U | PTE_W);	
-	//		return;
-	//	}
-	//} //else { // Happened in kernel mode
-	//	if(P) { // This shouldnt happen?
-	//		//panic("Page fault because kernel did not have permission?");
-	//	} else {
-	//		cprintf("        ----allocating and inserting page (kern)\n");
-	//		struct PageInfo *pp = page_alloc(ALLOC_ZERO);
-	//		pp->pp_ref++;
-	//		page_insert(kern_pgdir, pp, (void*)fault_va, PTE_W | PTE_U);	
-	//		return;
-	//	} 
-	//}
-	
+	if((tf->tf_cs & 1) == 0 && (tf->tf_cs & 2) == 0)
+		panic("uh oh, page fault in kernel mode, tf_cs = %d\n", tf->tf_cs);
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.

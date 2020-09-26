@@ -68,7 +68,7 @@ TRAPHANDLER(trap11, T_SEGNP);
 TRAPHANDLER(trap12, T_STACK);
 TRAPHANDLER(trap13, T_GPFLT);
 TRAPHANDLER(trap14, T_PGFLT);
-TRAPHANDLER(trap17, T_ALIGN); # didn't see this listed as an error code trap in the intel docs, but the TA slides said it was
+TRAPHANDLER(trap17, T_ALIGN); 
 
 
 
@@ -77,29 +77,19 @@ TRAPHANDLER(trap17, T_ALIGN); # didn't see this listed as an error code trap in 
  */
 _alltraps:
 
-	# w = 16bit, l = 32bit
-
-	# 1 First push values to make the stack look like a trap frame?
-		# By the time I'm here the trap num/error code are already pushed - order is def fixed, so I guess I assume everything through trapnum is set and start there?
-	pushw $0;	# 2 bytes padding
+	pushw $0;	
 	pushw %ds;
 	pushw $0;
 	pushw %es;
-		# Comment in inc/trap.h says pusha fills out the PushRegs struct - which is the start of a trap frame
 	pushal
 
-	# 2 Move GD_KD (memlayout.h) into ds and es registers - why? This corresponds to the kernel data segment
-		# These registers are 16 bit, so dont use movl
-	
-	movw $GD_KT, %ax; # Huh so this breaks if I put GD_KT directly into the registers, but not if I put it into ax first? Something to do with a general purpose reg?
+	movw $GD_KT, %ax; 
 	movw %ax, %ds;
 	movw %ax, %es;
 	
-	# 3 pushl esp as an arg to the trap frame
 	pushl %esp
 
 	call trap
 	
-	# trap should not return, so I'll just copy spin code from entry.S
 	spin:   jmp spin
 
