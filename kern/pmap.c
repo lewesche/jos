@@ -165,7 +165,8 @@ mem_init(void)
 	// LAB 3: Your code here.
 
 	envs = (struct Env*) boot_alloc (NENV * sizeof(struct Env));
-	memset(envs, 0, npages*sizeof(struct Env));
+	// Not sure why this is causing a tripple fault at the start of lab 4, but i'll comment it out
+	//memset(envs, 0, npages*sizeof(struct Env));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -327,6 +328,12 @@ page_init(void)
 		} else if(i*PGSIZE >= PGSIZE && i*PGSIZE<npages_basemem*PGSIZE) {
 			pageFree = true;
 		}
+		
+		// Lab 4 addition
+		if(i*PGSIZE == MPENTRY_PADDR) {
+			pageFree = false;
+		}
+
 		if(pageFree) {
 			pages[i].pp_ref = 0;
 			pages[i].pp_link = page_free_list;
@@ -661,7 +668,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	
 	//panic("mmio_map_region not implemented");
 
-	if(size%PGSIZE) {
+	if(size%PGSIZE!=0) {
 		size = ROUNDUP(size, PGSIZE);
 	}
 	if(base+size >= MMIOLIM) {
@@ -669,8 +676,9 @@ mmio_map_region(physaddr_t pa, size_t size)
 	}
 
 	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	void* oldBase = (void*) base;
 	base+=size;
-	return KADDR(pa);
+	return oldBase;
 }
 
 static uintptr_t user_mem_check_addr;
