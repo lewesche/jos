@@ -65,6 +65,25 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+extern void trap0();
+extern void trap1();
+extern void trap2();
+extern void trap3();
+extern void trap4();
+extern void trap5();
+extern void trap6();
+extern void trap7();
+extern void trap8();
+extern void trap10();
+extern void trap11();
+extern void trap12();
+extern void trap13();
+extern void trap14();
+extern void trap16();
+extern void trap17();
+extern void trap18();
+extern void trap19();
+extern void trap48();
 
 void
 trap_init(void)
@@ -72,6 +91,30 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	
+	unsigned istrap = 1;	
+	unsigned sel = GD_KT;	
+	unsigned dpl = 0;		
+
+	SETGATE(idt[0], istrap, sel, trap0, dpl);
+	SETGATE(idt[1], istrap, sel, trap1, dpl);
+	SETGATE(idt[2], istrap, sel, trap2, dpl);
+	SETGATE(idt[3], istrap, sel, trap3, 3);
+	SETGATE(idt[4], istrap, sel, trap4, dpl);
+	SETGATE(idt[5], istrap, sel, trap5, dpl);
+	SETGATE(idt[6], istrap, sel, trap6, dpl);
+	SETGATE(idt[7], istrap, sel, trap7, dpl);
+	SETGATE(idt[8], istrap, sel, trap8, dpl);
+	SETGATE(idt[10], istrap, sel, trap10, dpl);
+	SETGATE(idt[11], istrap, sel, trap11, dpl);
+	SETGATE(idt[12], istrap, sel, trap12, dpl);
+	SETGATE(idt[13], istrap, sel, trap13, dpl);
+	SETGATE(idt[14], istrap, sel, trap14, dpl);
+	SETGATE(idt[16], istrap, sel, trap16, dpl);
+	SETGATE(idt[17], istrap, sel, trap17, dpl);
+	SETGATE(idt[18], istrap, sel, trap18, dpl);
+	SETGATE(idt[19], istrap, sel, trap19, dpl);
+	SETGATE(idt[48], istrap, sel, trap48, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -173,6 +216,18 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	
+	if(tf->tf_trapno == T_PGFLT) {
+		page_fault_handler(tf);
+		return;
+	} else if(tf->tf_trapno == T_BRKPT) {
+		monitor(tf);
+		return;
+	} else if(tf->tf_trapno == T_SYSCALL) {
+		int32_t ret = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+		tf->tf_regs.reg_eax = ret;
+		return;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -186,6 +241,7 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
@@ -268,6 +324,9 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+	
+	if((tf->tf_cs & 1) == 0 && (tf->tf_cs & 2) == 0)
+		panic("uh oh, page fault in kernel mode, tf_cs = %d\n", tf->tf_cs);
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.

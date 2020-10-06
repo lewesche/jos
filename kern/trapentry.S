@@ -48,9 +48,49 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+TRAPHANDLER_NOEC(trap0, T_DIVIDE);
+TRAPHANDLER_NOEC(trap1, T_DEBUG);
+TRAPHANDLER_NOEC(trap2, T_NMI);
+TRAPHANDLER_NOEC(trap3, T_BRKPT);
+TRAPHANDLER_NOEC(trap4, T_OFLOW);
+TRAPHANDLER_NOEC(trap5, T_BOUND);
+TRAPHANDLER_NOEC(trap6, T_ILLOP);
+TRAPHANDLER_NOEC(trap7, T_DEVICE);
+TRAPHANDLER_NOEC(trap16, T_FPERR);
+TRAPHANDLER_NOEC(trap18, T_MCHK);
+TRAPHANDLER_NOEC(trap19, T_SIMDERR);
+TRAPHANDLER_NOEC(trap48, T_SYSCALL);
+
+# https://usc-govindan-classes.github.io/cs555/jos-doc/readings/i386/s09_08.htm
+# Traps that geterate error codes:
+TRAPHANDLER(trap8, T_DBLFLT);
+TRAPHANDLER(trap10, T_TSS);
+TRAPHANDLER(trap11, T_SEGNP);
+TRAPHANDLER(trap12, T_STACK);
+TRAPHANDLER(trap13, T_GPFLT);
+TRAPHANDLER(trap14, T_PGFLT);
+TRAPHANDLER(trap17, T_ALIGN); 
+
 
 
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+
+	pushw $0;	
+	pushw %ds;
+	pushw $0;
+	pushw %es;
+	pushal
+
+	movw $GD_KT, %ax; 
+	movw %ax, %ds;
+	movw %ax, %es;
+	
+	pushl %esp
+
+	call trap
+	
+	spin:   jmp spin
 

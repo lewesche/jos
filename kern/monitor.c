@@ -25,6 +25,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display backtrace plz", mon_backtrace}
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -60,6 +61,33 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	cprintf("Stack backtrace:\n");
+	uint32_t ebp;
+	__asm __volatile("movl %%ebp,%0" : "=r" (ebp));
+	uint32_t* eip =(uint32_t*)(ebp+4);
+
+	while(*eip) {
+		cprintf("  ebp %x  ", ebp);
+		cprintf("eip %x  ", *eip);
+			
+		uint32_t* arg = eip+1;
+		cprintf("args");
+		for(int j=0; j<5; j++){
+			cprintf(" %08x", *arg);
+			arg+=1;
+		}	
+		cprintf("\n");
+	
+		// Excersize 12, filename, function name + line num
+		struct Eipdebuginfo info;
+		debuginfo_eip(*eip, &info);
+		uint32_t offset = *eip - info.eip_fn_addr;
+		int line_num = info.eip_line;
+		cprintf("         %s:%d: %.*s+%d\n", info.eip_file, line_num, info.eip_fn_namelen, info.eip_fn_name, offset);
+
+		ebp +=32;
+		eip =(uint32_t*)(ebp+4);
+	}
 	return 0;
 }
 
@@ -119,7 +147,6 @@ monitor(struct Trapframe *tf)
 
 	if (tf != NULL)
 		print_trapframe(tf);
-
 	while (1) {
 		buf = readline("K> ");
 		if (buf != NULL)
