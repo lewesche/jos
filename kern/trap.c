@@ -149,20 +149,28 @@ trap_init_percpu(void)
 
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
-	ts.ts_esp0 = KSTACKTOP;
-	ts.ts_ss0 = GD_KD;
+	
+	uintptr_t kstacktop_i = KSTACKTOP - (thiscpu->cpu_id)*(KSTKSIZE+KSTKGAP);  
+	thiscpu->cpu_ts.ts_esp0 = kstacktop_i;
+	thiscpu->cpu_ts.ts_ss0 = GD_KD; // Should this change?
 
 	// Initialize the TSS slot of the gdt.
-	gdt[GD_TSS0 >> 3] = SEG16(STS_T32A, (uint32_t) (&ts),
+	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] = SEG16(STS_T32A, (uint32_t) (&ts),
 					sizeof(struct Taskstate) - 1, 0);
-	gdt[GD_TSS0 >> 3].sd_s = 0;
+	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id].sd_s = 0;
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	ltr(GD_TSS0);
+	cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
+	cprintf("++----++ LAB 4 GD_TSS0 >> 3 = %d\n", GD_TSS0 >> 3);
+	// Unsure if this should change? ltr sets flag in TSS selector - each cpu has a TSS this should probably change. 
+		// adding cpu_id will change bottom 3 bits
+		// memlayout.h says GD_TSS0 is the selector for cpu0 - so this definetley needs to be a function of cpu_id. It's only ever used bit shifted >> 3 except right here? 
+		// This double shift thing seems to compile and run, but it might be a good thing to check if things break later on
+	ltr(((GD_TSS0 >> 3) + thiscpu->cpu_id) << 3); 
 
 	// Load the IDT
-	lidt(&idt_pd);
+	lidt(&idt_pd); // Probably shouldn't change? All cpus can share idt I think
 }
 
 void
