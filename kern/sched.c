@@ -29,7 +29,41 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	
+	// No previous env running
+	
+	if(curenv == NULL) {
+		// Start at first env 
+		for(int i=0; i<NENV; i++) {
+			cprintf("~~~~~~~~ LAB4 i=%d\n", i);
+			if(envs[i].env_status == ENV_RUNNABLE) {
+				env_run(&envs[i]);
+			}
+		}
+	} else {
+		// Find curenv index
+		bool found_curenv = false;
+		int i=0;
+		int count=0;
+		while(count<NENV-1) {
+			if(found_curenv) {
+				if(envs[i].env_status == ENV_RUNNABLE) {
+					env_run(&envs[i]);
+				}
+				++count;
+			}
 
+			if(envs[i].env_id == curenv->env_id) {
+				found_curenv == true;
+			}
+		++i;
+		if(i >= NENV) { i=0; }
+		}
+		// If we got out of the while loop and found nothing, check curenv
+		if(curenv->env_status == ENV_RUNNING) {
+			env_run(curenv);
+		}
+	}
 	// sched_halt never returns
 	sched_halt();
 }

@@ -161,8 +161,8 @@ trap_init_percpu(void)
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
-	cprintf("++----++ LAB 4 GD_TSS0 >> 3 = %d\n", GD_TSS0 >> 3);
+	//cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
+	//cprintf("++----++ LAB 4 GD_TSS0 >> 3 = %d\n", GD_TSS0 >> 3);
 	// Unsure if this should change? ltr sets flag in TSS selector - each cpu has a TSS this should probably change. 
 		// adding cpu_id will change bottom 3 bits
 		// memlayout.h says GD_TSS0 is the selector for cpu0 - so this definetley needs to be a function of cpu_id. It's only ever used bit shifted >> 3 except right here? 
@@ -288,6 +288,8 @@ trap(struct Trapframe *tf)
 		// serious kernel work.
 		// LAB 4: Your code here.
 		assert(curenv);
+
+		spin_lock(&kernel_lock);
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {

@@ -5,3 +5,5 @@ Lab 4
 
 1	When boot.S runs, it is loaded and linked at the same low address. However when mpentry.S runs it's loaded into the address low address MPENTRY_PADDR but the actual kernel runs at a high address. The different load and link addresses need to be taken into accound when referencing symbols because the cpu that loaded and linked the segment had address translation turned on, but the cpu running it has address translation turned off. The macro MPBOOTPHYS subtracts what the linker thinks the start of the function is (a high address) and adds the low address that is the true start of the function (MPENTRY_PADDR). 
 
+2	If we had just one kernel thread, one CPU that wants to run in the kernel would have no way of knowing if another cpu is using the kernel thread. It could trap and try and acquire the spin lock - but it would be using the stack to do this, which would mess up the stack for whoever was originally running. 
+
