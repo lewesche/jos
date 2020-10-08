@@ -335,6 +335,7 @@ page_init(void)
 		
 		// Lab 4 addition
 		if(i*PGSIZE == MPENTRY_PADDR) {
+			//cprintf("++====++ LAB 4 FOUND MPENTRY_PADDR\n");
 			pageFree = false;
 		}
 

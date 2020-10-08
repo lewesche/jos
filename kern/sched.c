@@ -35,7 +35,7 @@ sched_yield(void)
 	if(curenv == NULL) {
 		// Start at first env 
 		for(int i=0; i<NENV; i++) {
-			cprintf("~~~~~~~~ LAB4 i=%d\n", i);
+			//cprintf("~~~~~~~~ LAB4 i=%d\n", i);
 			if(envs[i].env_status == ENV_RUNNABLE) {
 				env_run(&envs[i]);
 			}

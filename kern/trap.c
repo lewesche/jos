@@ -150,10 +150,14 @@ trap_init_percpu(void)
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
 	
+	cprintf("++----++ LAB   thiscpu->cpu_id = %d\n", thiscpu->cpu_id);
+	cprintf("++----++ LAB 4 cpunum = %d\n", cpunum());
+
+
 	uintptr_t kstacktop_i = KSTACKTOP - (thiscpu->cpu_id)*(KSTKSIZE+KSTKGAP);  
 	thiscpu->cpu_ts.ts_esp0 = kstacktop_i;
 	thiscpu->cpu_ts.ts_ss0 = GD_KD; // Should this change?
-
+	
 	// Initialize the TSS slot of the gdt.
 	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] = SEG16(STS_T32A, (uint32_t) (&ts),
 					sizeof(struct Taskstate) - 1, 0);
@@ -161,8 +165,8 @@ trap_init_percpu(void)
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	//cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
-	//cprintf("++----++ LAB 4 GD_TSS0 >> 3 = %d\n", GD_TSS0 >> 3);
+	cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
+	cprintf("++----++ LAB 4 (((GD_TSS0 >> 3) + thiscpu->cpu_id) << 3) = %d\n", (((GD_TSS0 >> 3) + thiscpu->cpu_id) << 3));
 	// Unsure if this should change? ltr sets flag in TSS selector - each cpu has a TSS this should probably change. 
 		// adding cpu_id will change bottom 3 bits
 		// memlayout.h says GD_TSS0 is the selector for cpu0 - so this definetley needs to be a function of cpu_id. It's only ever used bit shifted >> 3 except right here? 
@@ -289,7 +293,7 @@ trap(struct Trapframe *tf)
 		// LAB 4: Your code here.
 		assert(curenv);
 
-		spin_lock(&kernel_lock);
+		lock_kernel();
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {

@@ -51,7 +51,7 @@ i386_init(void)
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 
-	spin_lock(&kernel_lock); // Does not say to unlock?
+	lock_kernel(); // Does not say to unlock?
 
 	// Starting non-boot CPUs
 	boot_aps();
@@ -61,10 +61,11 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	//ENV_CREATE(user_primes, ENV_TYPE_USER);
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
+	ENV_CREATE(user_primes, ENV_TYPE_USER);
+	//ENV_CREATE(user_yield, ENV_TYPE_USER);
+	//ENV_CREATE(user_yield, ENV_TYPE_USER);
+	//ENV_CREATE(user_yield, ENV_TYPE_USER);
+	//ENV_CREATE(user_hello, ENV_TYPE_USER);
 
 #endif // TEST*
 
@@ -123,7 +124,7 @@ mp_main(void)
 	//
 	// Your code here:
 
-	spin_lock(&kernel_lock);
+	lock_kernel();
 	sched_yield();
 
 	// Remove this after you finish Exercise 4

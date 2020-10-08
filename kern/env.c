@@ -125,11 +125,11 @@ env_init(void)
 	for(size_t i=0; i<NENV-1; i++) {
 		envs[i].env_link = &envs[i+1];
 		envs[i].env_id = 0;
-		envs[i].env_type = ENV_FREE;
+		envs[i].env_status = ENV_FREE;
 	}
 	envs[NENV-1].env_link = NULL;
 	envs[NENV-1].env_id = 0;
-	envs[NENV-1].env_type = ENV_FREE;
+	envs[NENV-1].env_status = ENV_FREE;
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -562,13 +562,14 @@ env_run(struct Env *e)
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
 		curenv->env_runs++;
+		//unlock_kernel();
 		lcr3(PADDR(curenv->env_pgdir));
 	}
 
 	// Does popping the trap frame mean switching to the user context?
-	spin_unlock(&kernel_lock);
+	unlock_kernel();
 
 	env_pop_tf(&e->env_tf); 
-
+	//unlock_kernel();
 }
 
