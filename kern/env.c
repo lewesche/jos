@@ -127,6 +127,7 @@ env_init(void)
 		envs[i].env_id = 0;
 		envs[i].env_status = ENV_FREE;
 	}
+
 	envs[NENV-1].env_link = NULL;
 	envs[NENV-1].env_id = 0;
 	envs[NENV-1].env_status = ENV_FREE;
@@ -198,6 +199,7 @@ env_setup_vm(struct Env *e)
 	
 	pde_t* pgdir = page2kva(p);
 	size_t size = PGSIZE - PDX(UTOP)*4;
+
 	memcpy(&pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], size);
 	
 	e->env_pgdir = pgdir;
@@ -306,7 +308,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 	for(va; va<endva; va+=PGSIZE) {
 		struct PageInfo *pp = page_alloc(0);
 		if(!pp) { 
-			panic("region_alloc failed in page_alloc"); } 
+			panic("region_alloc failed in page_alloc"); }
+		pp->pp_ref++;	
 		int status = page_insert(e->env_pgdir, pp, va, PTE_U | PTE_W);
 		if(status == -E_NO_MEM) { 
 			panic("region_alloc failed in page_insert"); } 
@@ -555,7 +558,7 @@ env_run(struct Env *e)
 
 	//panic("env_run not yet implemented");
 	
-	if(curenv != e) {	// new enviroment is running
+	//if(curenv != e) {	// new enviroment is running
 		if(curenv!=NULL && curenv->env_status==ENV_RUNNING) {
 			curenv->env_status = ENV_RUNNABLE;
 		}
@@ -564,12 +567,12 @@ env_run(struct Env *e)
 		curenv->env_runs++;
 		//unlock_kernel();
 		lcr3(PADDR(curenv->env_pgdir));
-	}
+	//}
 
 	// Does popping the trap frame mean switching to the user context?
 	unlock_kernel();
 
-	env_pop_tf(&e->env_tf); 
+	env_pop_tf(&curenv->env_tf); 
 	//unlock_kernel();
 }
 
