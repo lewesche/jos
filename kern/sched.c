@@ -35,33 +35,32 @@ sched_yield(void)
 	if(curenv == NULL) {
 		// Start at first env 
 		for(int i=0; i<NENV; i++) {
-			//cprintf("~~~~~~~~ LAB4 i=%d\n", i);
 			if(envs[i].env_status == ENV_RUNNABLE) {
+				//cprintf("++++---- LAB 4 picking env i = %d\n", i);
 				env_run(&envs[i]);
 			}
 		}
 	} else {
-		// Find curenv index
-		bool found_curenv = false;
-		int i=0;
-		int count=0;
-		while(count<NENV-1) {
-			if(found_curenv) {
-				if(envs[i].env_status == ENV_RUNNABLE) {
-					env_run(&envs[i]);
+		int i= (int) (curenv - envs); //index of curenv
+		//cprintf("++++ LAB 4 curenv = %x\n", curenv);
+		//cprintf("++++ LAB 4 envs = %x\n", envs);
+		//cprintf("++++ LAB 4 i = %d\n", i);
+		i++;
+		//cprintf("++++ LAB 4 i++ = %d\n", i);
+		for(;;) {
+			if(i >= NENV) { i=0; }
+			if(envs[i].env_status == ENV_RUNNABLE) {
+				//cprintf("++++---- LAB 4 picking env i = %d\n", i);
+				env_run(&envs[i]);
+			}
+			if(&envs[i] == curenv){
+				if(curenv->env_status == ENV_RUNNING) {
+					//cprintf("++++---- LAB 4 picking curenv i = %d\n", i);
+					env_run(curenv);
 				}
-				++count;
+				sched_halt();
 			}
-
-			if(envs[i].env_id == curenv->env_id) {
-				found_curenv == true;
-			}
-		++i;
-		if(i >= NENV) { i=0; }
-		}
-		// If we got out of the while loop and found nothing, check curenv
-		if(curenv->env_status == ENV_RUNNING) {
-			env_run(curenv);
+			i++;
 		}
 	}
 	// sched_halt never returns

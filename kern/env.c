@@ -558,7 +558,7 @@ env_run(struct Env *e)
 
 	//panic("env_run not yet implemented");
 	
-	//if(curenv != e) {	// new enviroment is running
+	if(curenv != e) {	// new enviroment is running
 		if(curenv!=NULL && curenv->env_status==ENV_RUNNING) {
 			curenv->env_status = ENV_RUNNABLE;
 		}
@@ -567,7 +567,7 @@ env_run(struct Env *e)
 		curenv->env_runs++;
 		//unlock_kernel();
 		lcr3(PADDR(curenv->env_pgdir));
-	//}
+	}
 
 	// Does popping the trap frame mean switching to the user context?
 	unlock_kernel();
