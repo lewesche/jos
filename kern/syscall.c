@@ -97,7 +97,7 @@ sys_exofork(void)
 	new_env->env_tf = curenv->env_tf;
 	new_env->env_tf.tf_regs.reg_eax = 0;
 
-	return curenv->env_id;
+	return new_env->env_id;
 }
 
 // Set envid's env_status to status, which must be ENV_RUNNABLE
