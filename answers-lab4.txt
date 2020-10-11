@@ -7,3 +7,6 @@ Lab 4
 
 2	If we had just one kernel thread, one CPU that wants to run in the kernel would have no way of knowing if another cpu is using the kernel thread. It could trap and try and acquire the spin lock - but it would be using the stack to do this, which would mess up the stack for whoever was originally running. 
 
+3	Because e points to an eviroment, and the array of enviroments envs is mapped into each enviroment's pgdir as read only to the user. 
+
+4	It must save the old registers because the enviroment being swapped out might have been preempted while it was in the middle of doing something with those registers. The Trapframe struct of each enviroment is where the registers are saved. The registers are pushed by the 'pushal' instruction in _alltraps in trapentry.S
