@@ -327,6 +327,26 @@ trap(struct Trapframe *tf)
 		sched_yield();
 }
 
+// tf->tf_esp should be set up before this is called
+void
+build_utf(struct UTrapframe *utf, uint32_t fault_va, struct Trapframe *tf) {
+		struct UTrapframe *utf = (struct UTrapframe*)tf->tf_esp;
+		utf->utf_fault_va = fault_va;
+		utf->utf_err = tf->tf_err;
+		utf->utf_regs = tf->tf_regs;
+		utf->utf_eip = tf->tf_eip;
+		utf->utf_eflags = tf->tf_eflags;
+		utf->utf_esp = tf->tf_esp;
+}
+
+void
+bad_pg_fault(struct Trapframe *tf, uint32_t fault_va) {
+	// Destroy the environment that caused the fault.
+	cprintf("[%08x] user fault va %08x ip %08x\n",
+		curenv->env_id, fault_va, tf->tf_eip);
+	print_trapframe(tf);
+	env_destroy(curenv);
+}
 
 void
 page_fault_handler(struct Trapframe *tf)
@@ -376,10 +396,25 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 4: Your code here.
 
-	// Destroy the environment that caused the fault.
-	cprintf("[%08x] user fault va %08x ip %08x\n",
-		curenv->env_id, fault_va, tf->tf_eip);
-	print_trapframe(tf);
-	env_destroy(curenv);
+	if(curenv->env_pgfault_upcall == NULL) {
+		bad_pg_fault(tf, fault_va);
+	}
+	tf->tf_eip = curenv->env_pgfault_upcall;
+
+	if((tf->tf_esp < UXSTACKTOP) && (tf->tf_esp >= UXSTACKTOP-PGSIZE)) {
+		// Faulted while handling fault
+		if(tf->esp - sizeof(struct UTrapframe) - 4 < UXSTACKTOP - PGSIZE) {
+			//Adding a new utf would overflow the UXSTACKTOP page
+			bad_pg_fault(tf, fault_va);
+		}
+		tf->tf_esp -= sizeof(struct UTrapframe);
+		tf->tf_exp -= 4; // Extra word of space
+	} else if (tf->tf_esp < USTACKTOP){
+		// Fresh fault
+		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe);
+	}
+	build_utf(utf, fault_va, tf);
+
+	env_run(curenv);
 }
 
