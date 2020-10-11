@@ -411,7 +411,7 @@ page_fault_handler(struct Trapframe *tf)
 		tf->tf_esp -= 4; // Extra word of space
 	} else if (tf->tf_esp < USTACKTOP){
 		// Fresh fault
-		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe);
+		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe) -4; // -4 because UXSTACKTOP is out of bounds
 	}
 	build_utf(fault_va, tf);
 
