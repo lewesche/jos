@@ -72,13 +72,17 @@ _pgfault_upcall:
 		// they will be resored with popal anyway
 	movl 40(%esp), %eax
 
-	// utf_eip holds the *trap-time* esp
+	// utf_esp holds the *trap-time* esp
 	// Intuitively, I have no idea where this - somewhere in user space or somewhere in the UXSTACK?
 	// But it shouldn't matter. Regardless it should have 4 bytes for eip at the top
 	movl %esp, %ebx
 	movl 48(%esp), %esp // switch to *trap-time* esp
 	pushl %eax
+	// epiphany - after pushing, the trap time esp saved in the utf is incosistent! save the new esp
+	movl %esp, %ecx
 	movl %ebx, %esp // switch back
+	movl %ecx, 48(%esp) // update utf esp
+
 
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
@@ -86,7 +90,8 @@ _pgfault_upcall:
 
 	popl %eax // toss out error code
 	popl %eax // toss out offending va
-	popal	// this should do what trapentry.S did in reverse
+	
+	popal // this should do what trapentry.S did in reverse
 	// no more touching general registers after this
 
 	// Restore eflags from the stack.  After you do this, you can
@@ -100,7 +105,7 @@ _pgfault_upcall:
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
 
-	popl %esp // this clears out the last of the utf AND brings us back to user mode
+	popl %esp // this clears out the last of the utf AND brings us back to user stack at the updated esp
 	// two stoned birds
 
 	// Return to re-execute the instruction that faulted.
