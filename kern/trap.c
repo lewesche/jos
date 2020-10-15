@@ -400,7 +400,7 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 
 	// add code to check for UXSTACKTOP alloc
-	user_mem_assert(curenv, (void*)(UXSTACKTOP-PGSIZE), PGSIZE, PTE_U|PTE_W|PTE_P);
+	//user_mem_assert(curenv, (void*)(UXSTACKTOP-PGSIZE), PGSIZE, PTE_U|PTE_W|PTE_P);
 
 	if(curenv->env_pgfault_upcall == NULL) {
 		bad_pg_fault(tf, fault_va);
