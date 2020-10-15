@@ -329,16 +329,14 @@ trap(struct Trapframe *tf)
 
 // tf->tf_esp should be set up before this is called
 void
-build_utf(uint32_t fault_va, struct Trapframe *tf) {
-		//cprintf("======== LAB 4 build_utf tf->tf_esp = %x\n", tf->tf_esp);
-		//cprintf("======== LAB 4 build_utf curenv->env_tf.tf_esp = %x\n", curenv->env_tf.tf_esp);
+build_utf(uint32_t fault_va, uintptr_t old_esp, struct Trapframe *tf) {
 		struct UTrapframe *utf = (struct UTrapframe*)tf->tf_esp;
 		utf->utf_fault_va = fault_va;
 		utf->utf_err = tf->tf_err;
 		utf->utf_regs = tf->tf_regs;
 		utf->utf_eip = tf->tf_eip;
 		utf->utf_eflags = tf->tf_eflags;
-		utf->utf_esp = tf->tf_esp;
+		utf->utf_esp = old_esp;
 }
 
 void
@@ -353,12 +351,13 @@ bad_pg_fault(struct Trapframe *tf, uint32_t fault_va) {
 void
 page_fault_handler(struct Trapframe *tf)
 {
+	// Before anything save esp
+	uintptr_t old_esp = tf->tf_esp;
+
 	uint32_t fault_va;
 
 	// Read processor's CR2 register to find the faulting address
 	fault_va = rcr2();
-
-	//cprintf("++++---- LAB 4 page_fault_handler() fault_va = %x, tf->tf_cs = %d\n", fault_va, tf->tf_cs);
 
 	// Handle kernel-mode page faults.
 
@@ -400,21 +399,16 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 4: Your code here.
 
-	//cprintf("============ LAB 4 UXSTACKTOP = %x\n", UXSTACKTOP);
-	//cprintf("============ LAB 4 UXSTACKTOP - PGSIZE = %x\n", UXSTACKTOP - PGSIZE);
-
 	// add code to check for UXSTACKTOP alloc
+	user_mem_assert(curenv, (void*)(UXSTACKTOP-PGSIZE), PGSIZE, PTE_U|PTE_W|PTE_P);
 
 	if(curenv->env_pgfault_upcall == NULL) {
 		bad_pg_fault(tf, fault_va);
 	}
 
-	// cprintf("============ LAB 4 Before: tf->tf_esp = %d\n", tf->tf_esp);
-	// cprintf("============ LAB 4 Before: sizeof(struct UTrapframe) = %d\n", sizeof(struct UTrapframe));
-
 	if((tf->tf_esp < UXSTACKTOP) && (tf->tf_esp >= UXSTACKTOP-PGSIZE)) {
 		// Faulted while handling fault
-		if(tf->tf_esp - sizeof(struct UTrapframe) - 4 < (UXSTACKTOP - PGSIZE)) {
+		if((tf->tf_esp - sizeof(struct UTrapframe) - 4) < (UXSTACKTOP - PGSIZE)) {
 			//Adding a new utf would overflow the UXSTACKTOP page
 			bad_pg_fault(tf, fault_va);
 		}
@@ -422,13 +416,12 @@ page_fault_handler(struct Trapframe *tf)
 		tf->tf_esp -= 4; // Extra word of space
 	} else if (tf->tf_esp < USTACKTOP){
 		// Fresh fault
-		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe) ; // -4 because UXSTACKTOP is out of bounds
+		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe) ; 
 	}
 
-	build_utf(fault_va, tf);
-	tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+	build_utf(fault_va, old_esp, tf);
 
-	// cprintf("============ LAB 4 After : tf->tf_esp = %d\n", tf->tf_esp);
+	tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
 
 	env_run(curenv);
 }
