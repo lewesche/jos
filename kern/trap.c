@@ -400,12 +400,14 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 
 	// add code to check for UXSTACKTOP alloc
-	//user_mem_assert(curenv, (void*)(UXSTACKTOP-PGSIZE), PGSIZE, PTE_U|PTE_W|PTE_P);
 
 	if(curenv->env_pgfault_upcall == NULL) {
 		bad_pg_fault(tf, fault_va);
 	}
-
+	user_mem_assert(curenv, curenv->env_pgfault_upcall, 1, PTE_P); // this fixes bad handler and evil handler
+	user_mem_assert(curenv, (void*)(UXSTACKTOP-PGSIZE), PGSIZE, PTE_W|PTE_P);
+	//user_mem_assert(curenv, (void*)fault_va, 1, PTE_U);
+	//
 	if((tf->tf_esp < UXSTACKTOP) && (tf->tf_esp >= UXSTACKTOP-PGSIZE)) {
 		// Faulted while handling fault
 		if((tf->tf_esp - sizeof(struct UTrapframe) - 4) < (UXSTACKTOP - PGSIZE)) {
@@ -417,7 +419,7 @@ page_fault_handler(struct Trapframe *tf)
 	} else if (tf->tf_esp < USTACKTOP){
 		// Fresh fault
 		tf->tf_esp = UXSTACKTOP - sizeof(struct UTrapframe) ; 
-	}
+	} 
 
 	build_utf(fault_va, old_esp, tf);
 
