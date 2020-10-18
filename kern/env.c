@@ -528,6 +528,7 @@ env_pop_tf(struct Trapframe *tf)
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
 
+
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
 		"\tpopl %%es\n"
@@ -575,17 +576,12 @@ env_run(struct Env *e)
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
 		curenv->env_runs++;
-		//unlock_kernel();
 		lcr3(PADDR(curenv->env_pgdir));
 	//}
 
-	// Does popping the trap frame mean switching to the user context?
+
 	unlock_kernel();
 
-	//if((curenv->env_tf.tf_eflags & FL_IF) == 0)
-		//cprintf("++++ ++++ LAB 4 wtf interrupts disabled\n");
-
 	env_pop_tf(&curenv->env_tf); 
-	//unlock_kernel();
 }
 
