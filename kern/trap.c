@@ -85,6 +85,24 @@ extern void trap18();
 extern void trap19();
 extern void trap48();
 
+// LAB 4 IQR additions
+extern void trap32();
+extern void trap33();
+extern void trap34();
+extern void trap35();
+extern void trap36();
+extern void trap37();
+extern void trap38();
+extern void trap39();
+extern void trap40();
+extern void trap41();
+extern void trap42();
+extern void trap43();
+extern void trap44();
+extern void trap45();
+extern void trap46();
+extern void trap47();
+
 void
 trap_init(void)
 {
@@ -92,7 +110,7 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 	
-	unsigned istrap = 1;	
+	unsigned istrap = 0;	
 	unsigned sel = GD_KT;	
 	unsigned dpl = 0;		
 
@@ -115,6 +133,24 @@ trap_init(void)
 	SETGATE(idt[18], istrap, sel, trap18, dpl);
 	SETGATE(idt[19], istrap, sel, trap19, dpl);
 	SETGATE(idt[48], istrap, sel, trap48, 3);
+
+	// LAB 4 IQR additions
+	SETGATE(idt[32], istrap, sel, trap32, dpl);
+	SETGATE(idt[33], istrap, sel, trap33, dpl);
+	SETGATE(idt[34], istrap, sel, trap34, dpl);
+	SETGATE(idt[35], istrap, sel, trap35, dpl);
+	SETGATE(idt[36], istrap, sel, trap36, dpl);
+	SETGATE(idt[37], istrap, sel, trap37, dpl);
+	SETGATE(idt[38], istrap, sel, trap38, dpl);
+	SETGATE(idt[39], istrap, sel, trap39, dpl);
+	SETGATE(idt[40], istrap, sel, trap40, dpl);
+	SETGATE(idt[41], istrap, sel, trap41, dpl);
+	SETGATE(idt[42], istrap, sel, trap42, dpl);
+	SETGATE(idt[43], istrap, sel, trap43, dpl);
+	SETGATE(idt[44], istrap, sel, trap44, dpl);
+	SETGATE(idt[45], istrap, sel, trap45, dpl);
+	SETGATE(idt[46], istrap, sel, trap46, dpl);
+	SETGATE(idt[47], istrap, sel, trap47, dpl);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -254,6 +290,12 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 
 
 	// Unexpected trap: The user process or the kernel has a bug.

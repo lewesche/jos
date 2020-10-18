@@ -269,6 +269,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
 
+	e->env_tf.tf_eflags = FL_IF;
+
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -387,7 +389,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	}
 	
 	e->env_tf.tf_eip = elf->e_entry;
-	e->env_tf.tf_eflags = elf->e_flags;
+	//e->env_tf.tf_eflags = elf->e_flags;  This is probably the issue - resets eflags I just set in env_alloc
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
@@ -420,12 +422,20 @@ env_create(uint8_t *binary, enum EnvType type)
 
 	status =  env_alloc(&new_env, 0);
 
+
 	if(status<0) {
 		panic("env_create failed in env_alloc() :(");
 	}
 
+	if((new_env->env_tf.tf_eflags & FL_IF) == 0)
+		cprintf("++++ ++++ LAB 4 wtf interrupts disabled before load_icode\n");
+
 	load_icode(new_env, binary);
 	new_env->env_type = type;
+
+	if((new_env->env_tf.tf_eflags & FL_IF) == 0)
+		cprintf("++++ ++++ LAB 4 wtf interrupts disabled after load_icode\n");
+
 }
 
 //
@@ -571,6 +581,9 @@ env_run(struct Env *e)
 
 	// Does popping the trap frame mean switching to the user context?
 	unlock_kernel();
+
+	//if((curenv->env_tf.tf_eflags & FL_IF) == 0)
+		//cprintf("++++ ++++ LAB 4 wtf interrupts disabled\n");
 
 	env_pop_tf(&curenv->env_tf); 
 	//unlock_kernel();
