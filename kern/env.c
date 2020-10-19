@@ -569,6 +569,10 @@ env_run(struct Env *e)
 
 	//panic("env_run not yet implemented");
 	
+
+	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send env->env_status != ENV_NOT_RUNNABLE %d\n", curenv->env_status != ENV_NOT_RUNNABLE);
+	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send !env->env_ipc_recving = %d\n", !curenv->env_ipc_recving);
+
 	//if(curenv != e) {	// new enviroment is running
 		if(curenv!=NULL && curenv->env_status==ENV_RUNNING) {
 			curenv->env_status = ENV_RUNNABLE;
