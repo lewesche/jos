@@ -192,7 +192,7 @@ trap_init_percpu(void)
 
 	uintptr_t kstacktop_i = KSTACKTOP - (thiscpu->cpu_id)*(KSTKSIZE+KSTKGAP);  
 	thiscpu->cpu_ts.ts_esp0 = kstacktop_i;
-	thiscpu->cpu_ts.ts_ss0 = GD_KD; // Should this change?
+	thiscpu->cpu_ts.ts_ss0 = GD_KD; 
 	
 	// Initialize the TSS slot of the gdt.
 	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] = SEG16(STS_T32A, (uint32_t) (&thiscpu->cpu_ts),
@@ -201,17 +201,10 @@ trap_init_percpu(void)
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	//cprintf("++----++ LAB 4 GD_TSS0 = %d\n", GD_TSS0);
-	//cprintf("++----++ LAB 4 (((GD_TSS0 >> 3) + thiscpu->cpu_id) << 3) = %d\n", (((GD_TSS0 >> 3) + thiscpu->cpu_id) << 3));
-	// Unsure if this should change? ltr sets flag in TSS selector - each cpu has a TSS this should probably change. 
-		// adding cpu_id will change bottom 3 bits
-		// memlayout.h says GD_TSS0 is the selector for cpu0 - so this definetley needs to be a function of cpu_id. It's only ever used bit shifted >> 3 except right here? 
-		// This double shift thing seems to compile and run, but it might be a good thing to check if things break later on
 	ltr(GD_TSS0 + (thiscpu->cpu_id<<3)); 
-	//ltr(GD_TSS0);
 
 	// Load the IDT
-	lidt(&idt_pd); // Probably shouldn't change? All cpus can share idt I think
+	lidt(&idt_pd); 
 }
 
 void
@@ -321,7 +314,6 @@ trap(struct Trapframe *tf)
 		asm volatile("hlt");
 
 	// Re-acqurie the big kernel lock if we were halted in
-	// sched_yield()
 	if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
 		lock_kernel();
 	// Check that interrupts are disabled.  If this assertion
@@ -446,10 +438,9 @@ page_fault_handler(struct Trapframe *tf)
 	if(curenv->env_pgfault_upcall == NULL) {
 		bad_pg_fault(tf, fault_va);
 	}
-	user_mem_assert(curenv, curenv->env_pgfault_upcall, 1, PTE_P); // this fixes bad handler and evil handler
+	user_mem_assert(curenv, curenv->env_pgfault_upcall, 1, PTE_P); 
 	user_mem_assert(curenv, (void*)(UXSTACKTOP-1), PGSIZE, PTE_W|PTE_P);
-	//user_mem_assert(curenv, (void*)fault_va, 1, PTE_U);
-	//
+	
 	if((tf->tf_esp < UXSTACKTOP) && (tf->tf_esp >= UXSTACKTOP-PGSIZE)) {
 		// Faulted while handling fault
 		if((tf->tf_esp - sizeof(struct UTrapframe) - 4) < (UXSTACKTOP - PGSIZE)) {

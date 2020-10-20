@@ -326,17 +326,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	// LAB 4: Your code here.
 	//panic("sys_ipc_try_send not implemented");
 	
-	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send srcva = %d, perm = %d\n", srcva, perm);
-	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send curenv_env_id = %d\n", curenv->env_id);
-	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send send_to_env = %d\n", envid);
-	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send value = %d\n", value);
-
 	struct Env *env;
 	int err = envid2env(envid, &env, 0);	
 	if(err!=0) {return err;}
 	if(env->env_status != ENV_NOT_RUNNABLE || !env->env_ipc_recving) {
-		//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send env->env_status != ENV_NOT_RUNNABLE %d\n", env->env_status != ENV_NOT_RUNNABLE);
-		//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send !env->env_ipc_recving = %d\n", !env->env_ipc_recving);
 		return -E_IPC_NOT_RECV;
 	}
 
@@ -350,8 +343,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 			return -E_INVAL;
 		}
 		if(perm & ~PTE_SYSCALL || !(perm & PTE_U) || !(perm & PTE_P)) {
-			//cprintf("LAB 4 perm & PTE_U = %d\n", perm&PTE_U);
-			//cprintf("LAB 4 perm & PTE_P = %d\n", perm&PTE_P);
 			return -E_INVAL;
 		}
 
@@ -359,7 +350,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 			return -E_INVAL;
 		}
 		if((uintptr_t)(env->env_ipc_dstva) < UTOP) {
-			//err = sys_page_map(curenv->env_id, srcva, envid, env->env_ipc_dstva, perm); // This wont work - does a page loopup with the wrong permissions
 			err = page_insert(env->env_pgdir, pp, env->env_ipc_dstva, perm);
 			if(err!=0) {
 				return err;
@@ -397,7 +387,6 @@ sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
 	//panic("sys_ipc_recv not implemented");
-	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_recv curenv_env_id = %d\n", curenv->env_id);
 
 	if((uintptr_t)dstva < UTOP) {
 		if((uintptr_t)dstva % PGSIZE != 0) {return -E_INVAL;}

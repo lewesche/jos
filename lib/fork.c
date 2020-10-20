@@ -30,7 +30,7 @@ pgfault(struct UTrapframe *utf)
 	unsigned pn = (unsigned) addr/PGSIZE;
 	pte_t pte = uvpt[pn];
 
-	if( (err&FEC_WR)==0 || (pte&PTE_COW)==0) // unsure about second part of this check, but idk how to get pte here
+	if( (err&FEC_WR)==0 || (pte&PTE_COW)==0) 
 		panic("Panic from lib/fork.c pgfault() : check failed");
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
@@ -43,7 +43,6 @@ pgfault(struct UTrapframe *utf)
 
 	//panic("pgfault not implemented");
 	
-	//ofc addr needs to be aligned!
 	addr = ROUNDDOWN(addr, PGSIZE);
 	
 	r = sys_page_alloc(sys_getenvid(), PFTEMP, PTE_U|PTE_P|PTE_W);
@@ -94,7 +93,6 @@ duppage(envid_t envid, unsigned pn)
 
 	// parent -> parent
 	if(perm&PTE_COW) {
-		// maybe this is causing problems - no need to remap read only pages to parent
 		r = sys_page_map(sys_getenvid(), addr, sys_getenvid(), addr, perm);
 		if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
 	}
@@ -142,12 +140,10 @@ fork(void)
 
 		// Everything below UXSTACK -
 		for(unsigned pn=0; pn < (UXSTACKTOP-PGSIZE)/PGSIZE; pn++) {
-			// Why is this uvpd check necessary? In what situation would the pgdir entry be parked present but not the pte entry?
 			pte_t pde = uvpd[PDX(pn*PGSIZE)]; // converts page num to address, then address to page dir index
 			if(pde & PTE_P) {
 				pte_t pte = uvpt[pn];
 				if((pte & PTE_P)) {
-					// I wrote dupage so that it can handle genuine RO pages
 					duppage(child_envid, pn);
 				} 
 			}

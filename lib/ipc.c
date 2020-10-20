@@ -27,9 +27,6 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 
 	int err;
 
-	//cprintf("~~~~~~~~ LAB 4 ipc_recv envid = %d, pg = %d\n",thisenv->env_id , pg);
-
-
 	if(pg) {
 		err = sys_ipc_recv(pg);
 	} else {
@@ -76,16 +73,10 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 	
 	int err = -E_IPC_NOT_RECV;
 
-	//cprintf("~~~~~~~~ LAB 4 ipc_send envid = %d, pg = %d, perm = %d\n",thisenv->env_id, pg, perm);
-	//cprintf("~~~~~~~~ LAB 4 ipc_send to_env = %d\n", to_env);
-	//cprintf("~~~~~~~~ LAB 4 ipc_send val = %d\n", val);
-
 	while(err == -E_IPC_NOT_RECV) {
 		if(pg != NULL) {
-			//cprintf("~~~~~~~~ LAB 4 pg is not null\n");
 			err = sys_ipc_try_send(to_env, val, pg, perm);
 		} else {
-			//cprintf("~~~~~~~~ LAB 4 pg is null\n");
 			void* addr =(void*)(UTOP + PGSIZE);
 			err = sys_ipc_try_send(to_env, val, addr, 0);
 		}

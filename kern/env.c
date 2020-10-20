@@ -389,7 +389,6 @@ load_icode(struct Env *e, uint8_t *binary)
 	}
 	
 	e->env_tf.tf_eip = elf->e_entry;
-	//e->env_tf.tf_eflags = elf->e_flags;  This is probably the issue - resets eflags I just set in env_alloc
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
@@ -427,15 +426,8 @@ env_create(uint8_t *binary, enum EnvType type)
 		panic("env_create failed in env_alloc() :(");
 	}
 
-	if((new_env->env_tf.tf_eflags & FL_IF) == 0)
-		cprintf("++++ ++++ LAB 4 wtf interrupts disabled before load_icode\n");
-
 	load_icode(new_env, binary);
 	new_env->env_type = type;
-
-	if((new_env->env_tf.tf_eflags & FL_IF) == 0)
-		cprintf("++++ ++++ LAB 4 wtf interrupts disabled after load_icode\n");
-
 }
 
 //
@@ -528,7 +520,6 @@ env_pop_tf(struct Trapframe *tf)
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
 
-
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
 		"\tpopl %%es\n"
@@ -569,20 +560,13 @@ env_run(struct Env *e)
 
 	//panic("env_run not yet implemented");
 	
-
-	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send env->env_status != ENV_NOT_RUNNABLE %d\n", curenv->env_status != ENV_NOT_RUNNABLE);
-	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send !env->env_ipc_recving = %d\n", !curenv->env_ipc_recving);
-
-	//if(curenv != e) {	// new enviroment is running
-		if(curenv!=NULL && curenv->env_status==ENV_RUNNING) {
-			curenv->env_status = ENV_RUNNABLE;
-		}
-		curenv = e;
-		curenv->env_status = ENV_RUNNING;
-		curenv->env_runs++;
-		lcr3(PADDR(curenv->env_pgdir));
-	//}
-
+	if(curenv!=NULL && curenv->env_status==ENV_RUNNING) {
+		curenv->env_status = ENV_RUNNABLE;
+	}
+	curenv = e;
+	curenv->env_status = ENV_RUNNING;
+	curenv->env_runs++;
+	lcr3(PADDR(curenv->env_pgdir));
 
 	unlock_kernel();
 

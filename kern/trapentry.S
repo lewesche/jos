@@ -109,5 +109,5 @@ _alltraps:
 
 	call trap
 	
-//	spin:   jmp spin
+	spin:   jmp spin
 
