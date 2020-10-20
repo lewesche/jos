@@ -329,6 +329,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	//cprintf("~~~~~~~~ LAB 4 sys_ipc_try_send srcva = %d, perm = %d\n", srcva, perm);
 	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send curenv_env_id = %d\n", curenv->env_id);
 	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send send_to_env = %d\n", envid);
+	//cprintf("~~~~~~~~#### LAB 4 sys_ipc_try_send value = %d\n", value);
 
 	struct Env *env;
 	int err = envid2env(envid, &env, 0);	

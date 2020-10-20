@@ -40,19 +40,21 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 	if(from_env_store) {
 		if(!err) {
 			*from_env_store = thisenv->env_ipc_from;
-			return err;
 		} else {
 			*from_env_store = 0;
 		}
 	}
 
 	if(perm_store) {
-		if(err!=0) {
-			return err;
+		if(!err) {
 			*perm_store = thisenv->env_ipc_perm;
 		} else {
 			*perm_store = 0;
 		}
+	}
+
+	if(err) {
+		return err;
 	}
 
 	return thisenv->env_ipc_value;
@@ -76,7 +78,8 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 
 	//cprintf("~~~~~~~~ LAB 4 ipc_send envid = %d, pg = %d, perm = %d\n",thisenv->env_id, pg, perm);
 	//cprintf("~~~~~~~~ LAB 4 ipc_send to_env = %d\n", to_env);
-	
+	//cprintf("~~~~~~~~ LAB 4 ipc_send val = %d\n", val);
+
 	while(err == -E_IPC_NOT_RECV) {
 		if(pg != NULL) {
 			//cprintf("~~~~~~~~ LAB 4 pg is not null\n");
