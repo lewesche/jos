@@ -1,0 +1,12 @@
+Name: Leif Wesche
+ID: 7403776934
+
+Lab 3
+
+1	We need handlers to do different things - ex when a divide by zero fault occurs, we probably want to kill the program. But obviously we do not want to kill the program each time a page fault occurs, we want to bring in that page!
+
+2	13 is the protection interrupt, and 14 is the page falt interrupt. A procection fault occured because the program tried to throw a page fault interupt manually from user space - users aren't allowed to throw page faults manually, page fault's are only thrown when a address translation is not found.  
+
+3	I had this set up wrong - I had set dpl to 0 (kernel only) and fixed it by switching the protections to 3. With dpl = 0, the user did not have permission to create this interrupt!
+
+4	It's appropriate that the user should be able to use some interrupts - like the breakpoint interrupt. However some interupts should be off limits because the user could use them to get "see through" abstractions, like virtual memory in softmax, and mess with the kernel. This could allow a malicious program to hurt other programs 

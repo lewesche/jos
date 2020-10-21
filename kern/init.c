@@ -51,6 +51,8 @@ i386_init(void)
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 
+	lock_kernel(); // Does not say to unlock?
+
 	// Starting non-boot CPUs
 	boot_aps();
 
@@ -123,8 +125,11 @@ mp_main(void)
 	//
 	// Your code here:
 
+	lock_kernel();
+	sched_yield();
+
 	// Remove this after you finish Exercise 4
-	for (;;);
+	//for (;;);
 }
 
 /*
