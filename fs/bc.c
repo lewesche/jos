@@ -49,6 +49,14 @@ bc_pgfault(struct UTrapframe *utf)
 	//
 	// LAB 5: you code here:
 
+	void *addr_round = ROUNDDOWN(addr, PGSIZE);
+	r = sys_page_alloc(sys_getenvid(), addr_round, PTE_U|PTE_P|PTE_W);
+	if(r<0) {panic("Panic from fs/bc.c bc_pgfault() : alloc failed");}
+
+	// 8 sectors per block
+	r = ide_read(blockno*8, addr_round, 8); // looks like waiting is taken care of for me, can treat this call as synchronous
+	if(r<0) {panic("Panic from fs/bc.c bc_pgfault() : read failed");}
+
 	// Clear the dirty bit for the disk block page since we just read the
 	// block from disk
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
@@ -77,7 +85,19 @@ flush_block(void *addr)
 		panic("flush_block of bad va %08x", addr);
 
 	// LAB 5: Your code here.
-	panic("flush_block not implemented");
+	//panic("flush_block not implemented");
+
+	int r;	
+	addr = ROUNDDOWN(addr, PGSIZE);
+
+	if(va_is_mapped(addr)) {
+		if(va_is_dirty(addr)) {
+			r = ide_write(blockno*8, addr, 8);	
+			if(r<0) {panic("Panic from fs/bc.c flush_block() : write failed");}
+			r = sys_page_map(sys_getenvid(), addr, sys_getenvid(), addr, uvpt[PGNUM(addr)] & PTE_SYSCALL);
+			if(r<0) {panic("Panic from fs/bc.c flush_block() : map failed");}
+		}
+	}
 }
 
 // Test that the block cache works, by smashing the superblock and
