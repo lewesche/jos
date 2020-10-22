@@ -301,6 +301,25 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+		
+    for(unsigned pn=0; pn < (UXSTACKTOP-PGSIZE)/PGSIZE; pn++) {
+        pte_t pde = uvpd[PDX(pn*PGSIZE)]; // converts page num to address, then address to page dir index
+        if(pde & PTE_P) {
+            pte_t pte = uvpt[pn];
+            if((pte & PTE_P) && (pte & PTE_SHARE)) {
+				// why not just include and call dupage? 
+				void *addr = (void*)(pn*PGSIZE);
+        		int r = sys_page_map(sys_getenvid(), addr, child, addr, pte&PTE_SYSCALL);
+        		if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
+            }
+        }
+    }
+	
+
 	return 0;
 }
+
+
+
+
 

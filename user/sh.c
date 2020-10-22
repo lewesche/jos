@@ -55,7 +55,14 @@ again:
 			// then close the original 'fd'.
 
 			// LAB 5: Your code here.
-			panic("< redirection not implemented");
+			//panic("< redirection not implemented");
+			
+			fd = open(t, O_RDONLY); // idk about permissions here
+			if(fd != 0) {
+				dup(fd, 0);
+				close(fd);
+			}
+
 			break;
 
 		case '>':	// Output redirection

@@ -83,6 +83,14 @@ duppage(envid_t envid, unsigned pn)
 	
 	//see memlayout.h
 	pte_t pte = uvpt[pn];
+	
+	//LAB 5 addition
+	if(pte & PTE_SHARE) {
+		r = sys_page_map(sys_getenvid(), addr, envid, addr, pte&PTE_SYSCALL);
+		if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
+		return 0;
+	}
+
 	if((pte & PTE_W) || (pte & PTE_COW)) {
 		perm |= PTE_COW;
 	}
