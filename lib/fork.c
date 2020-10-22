@@ -26,6 +26,13 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
+	//see memlayout.h
+	unsigned pn = (unsigned) addr/PGSIZE;
+	pte_t pte = uvpt[pn];
+
+	if( (err&FEC_WR)==0 || (pte&PTE_COW)==0) 
+		panic("Panic from lib/fork.c pgfault() : check failed");
+
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.
@@ -34,7 +41,22 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
-	panic("pgfault not implemented");
+	//panic("pgfault not implemented");
+	
+	addr = ROUNDDOWN(addr, PGSIZE);
+	
+	r = sys_page_alloc(sys_getenvid(), PFTEMP, PTE_U|PTE_P|PTE_W);
+	if(r<0) {panic("Panic from lib/fork.c pgfault() : alloc failed");}
+
+	memcpy(PFTEMP, addr, PGSIZE);
+
+	r = sys_page_map(sys_getenvid(), PFTEMP, sys_getenvid(), addr, PTE_U|PTE_P|PTE_W);
+	if(r<0) {panic("Panic from lib/fork.c pgfault() : map failed");}
+
+	r = sys_page_unmap(sys_getenvid(), PFTEMP);
+	if(r<0) {panic("Panic from lib/fork.c pgfault() : unmap failed");}
+
+	return;
 }
 
 //
@@ -54,7 +76,34 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	//panic("duppage not implemented");
+	
+	void *addr = (void*)(pn*PGSIZE);	
+	int perm = PTE_U|PTE_P;
+	
+	//see memlayout.h
+	pte_t pte = uvpt[pn];
+	
+	//LAB 5 addition
+	if(pte & PTE_SHARE) {
+		r = sys_page_map(sys_getenvid(), addr, envid, addr, pte&PTE_SYSCALL);
+		if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
+		return 0;
+	}
+
+	if((pte & PTE_W) || (pte & PTE_COW)) {
+		perm |= PTE_COW;
+	}
+
+	// parent -> child
+	r = sys_page_map(sys_getenvid(), addr, envid, addr, perm);
+	if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
+
+	// parent -> parent
+	if(perm&PTE_COW) {
+		r = sys_page_map(sys_getenvid(), addr, sys_getenvid(), addr, perm);
+		if(r<0) {panic("Panic from lib/fork.c dupage() : map failed");}
+	}
 	return 0;
 }
 
@@ -78,7 +127,45 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	// panic("fork not implemented");
+
+	int err;
+
+	set_pgfault_handler(pgfault);
+	envid_t child_envid	= sys_exofork(); 
+
+	if(child_envid<0) {panic("Panic from lib/fork.c fork() : exofork failed");}
+
+	if(child_envid ==0) {
+		// This is the child
+		thisenv = &envs[ENVX(sys_getenvid())]; // from lib/libmain.c
+	} else {
+		// The parent has the valid address space, so duppage calls go here
+
+		// Fresh page for child UXSTACK
+		err = sys_page_alloc(child_envid, (void*)(UXSTACKTOP - PGSIZE), PTE_U | PTE_W | PTE_P);
+		if(err<0) {panic("Panic from lib/fork.c fork() : alloc failed");}
+
+		// Everything below UXSTACK -
+		for(unsigned pn=0; pn < (UXSTACKTOP-PGSIZE)/PGSIZE; pn++) {
+			pte_t pde = uvpd[PDX(pn*PGSIZE)]; // converts page num to address, then address to page dir index
+			if(pde & PTE_P) {
+				pte_t pte = uvpt[pn];
+				if((pte & PTE_P)) {
+					duppage(child_envid, pn);
+				} 
+			}
+		}	
+
+		// entry point refers to assembly portion i think
+		err = sys_env_set_pgfault_upcall(child_envid, thisenv->env_pgfault_upcall);
+		if(err<0) {panic("Panic from lib/fork.c fork() : set_upcall failed");}
+
+		err = sys_env_set_status(child_envid, ENV_RUNNABLE);
+		if(err<0) {panic("Panic from lib/fork.c fork() : set_status failed");}
+	}
+
+	return child_envid;
 }
 
 // Challenge!

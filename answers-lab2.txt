@@ -1,0 +1,35 @@
+Name: Leif Wesche
+
+1) uintpty_t
+
+2) 
+Entry	Base Virtual Address	Points to Logically
+1023	0xffc00000				Page table for top 4MB
+1022	0xff800000				...
+1021	0xff400000				256 MB of physical mem maps here
+1020	0xff000000				...
+..		...						...
+960		0xf0000000				KERNBASE
+...
+959		0xefff8000				8 pages for the kernel stack
+...
+956		0xef000000				UPAGES - this is the array of struct PageInfo* that the user can read from
+...
+4		0x01000000
+3		0x00c00000
+2		0x00800000
+1		0x00400000
+0		0x00000000
+
+3)	When the user tries to access a virtual address it is checked by hardware during address translation. If the page table entry's U/S=0, the user cant read or write the page. If U/S=1 and R/W=0 the user can read only. If U/S=1 and R/W=1 the user can do both. 
+
+4)	(1024 page dir entries) * (1024 page table entires) * (4096 bytes per page) = 200~4294967296
+
+5)	There is space overhead - the page dir and page tables need to be stored somwhere, taking up space. Also in lab 1 we learned that some of the address space is used to map devices, along with BIOS and display functionality. 
+
+6)	The kernel is loaded at a low address but linked at a higher address above KERNBASE. entry.S starts running at the low physical address, where before turning on paging it loads a temporary page dir. This temporary page dir simply maps the bottom 4mb of virtual memory to the bottom 4mb of physical memory, 1 to 1. We raise EIP above KERNBASE right at the end of entry.S,  before running C code. After paging turning on but before we raise EIP, we can execute because a trivial 1:1 address translation is happening at low addresses, thanks to our temporary page table. 
+	
+
+
+
+

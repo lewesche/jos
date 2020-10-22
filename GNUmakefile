@@ -97,6 +97,9 @@ CFLAGS += -I$(TOP)/net/lwip/include \
 # Add -fno-stack-protector if the option exists.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
+# Add flags as suggested by setup guide
+CFLAGS += -fno-pic
+
 # Common linker flags
 LDFLAGS := -m elf_i386
 

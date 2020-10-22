@@ -48,9 +48,66 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+TRAPHANDLER_NOEC(trap0, T_DIVIDE);
+TRAPHANDLER_NOEC(trap1, T_DEBUG);
+TRAPHANDLER_NOEC(trap2, T_NMI);
+TRAPHANDLER_NOEC(trap3, T_BRKPT);
+TRAPHANDLER_NOEC(trap4, T_OFLOW);
+TRAPHANDLER_NOEC(trap5, T_BOUND);
+TRAPHANDLER_NOEC(trap6, T_ILLOP);
+TRAPHANDLER_NOEC(trap7, T_DEVICE);
+TRAPHANDLER_NOEC(trap16, T_FPERR);
+TRAPHANDLER_NOEC(trap18, T_MCHK);
+TRAPHANDLER_NOEC(trap19, T_SIMDERR);
+TRAPHANDLER_NOEC(trap48, T_SYSCALL);
+
+# https://usc-govindan-classes.github.io/cs555/jos-doc/readings/i386/s09_08.htm
+# Traps that geterate error codes:
+TRAPHANDLER(trap8, T_DBLFLT);
+TRAPHANDLER(trap10, T_TSS);
+TRAPHANDLER(trap11, T_SEGNP);
+TRAPHANDLER(trap12, T_STACK);
+TRAPHANDLER(trap13, T_GPFLT);
+TRAPHANDLER(trap14, T_PGFLT);
+TRAPHANDLER(trap17, T_ALIGN); 
+
+// Lab 4 IQR additions
+TRAPHANDLER_NOEC(trap32, IRQ_OFFSET + IRQ_TIMER);
+TRAPHANDLER_NOEC(trap33, IRQ_OFFSET + IRQ_KBD);
+TRAPHANDLER_NOEC(trap34, IRQ_OFFSET + 2);
+TRAPHANDLER_NOEC(trap35, IRQ_OFFSET + 3);
+TRAPHANDLER_NOEC(trap36, IRQ_OFFSET + IRQ_SERIAL);
+TRAPHANDLER_NOEC(trap37, IRQ_OFFSET + 5);
+TRAPHANDLER_NOEC(trap38, IRQ_OFFSET + 6);
+TRAPHANDLER_NOEC(trap39, IRQ_OFFSET + IRQ_SPURIOUS);
+TRAPHANDLER_NOEC(trap40, IRQ_OFFSET + 8);
+TRAPHANDLER_NOEC(trap41, IRQ_OFFSET + 9);
+TRAPHANDLER_NOEC(trap42, IRQ_OFFSET + 10);
+TRAPHANDLER_NOEC(trap43, IRQ_OFFSET + 11);
+TRAPHANDLER_NOEC(trap44, IRQ_OFFSET + 12);
+TRAPHANDLER_NOEC(trap45, IRQ_OFFSET + 13);
+TRAPHANDLER_NOEC(trap46, IRQ_OFFSET + IRQ_IDE);
+TRAPHANDLER_NOEC(trap47, IRQ_OFFSET + 15);
 
 
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+
+	pushw $0;	
+	pushw %ds;
+	pushw $0;
+	pushw %es;
+	pushal
+
+	movw $GD_KT, %ax; 
+	movw %ax, %ds;
+	movw %ax, %es;
+	
+	pushl %esp
+
+	call trap
+	
+	spin:   jmp spin
 
